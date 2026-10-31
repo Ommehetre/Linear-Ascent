@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import type { AgentTraceStep } from "@/types";
+import type { AgentTraceStep, DataProvenance } from "@/types";
 import { ApiStatusBadge } from "@/components/ui/ApiStatusBadge";
 import {
   ChevronDown,
@@ -14,6 +14,7 @@ import {
   Terminal,
   Activity,
   Code2,
+  Database,
 } from "lucide-react";
 
 interface AgentTraceDrawerProps {
@@ -21,6 +22,7 @@ interface AgentTraceDrawerProps {
   isOpen: boolean;
   onToggle: () => void;
   rawPayload?: any;
+  provenance?: Record<string, DataProvenance>;
 }
 
 export function AgentTraceDrawer({
@@ -28,6 +30,7 @@ export function AgentTraceDrawer({
   isOpen,
   onToggle,
   rawPayload,
+  provenance,
 }: AgentTraceDrawerProps) {
   const [activeNode, setActiveNode] = useState<number>(1);
   const [showNetworkCalls, setShowNetworkCalls] = useState(false);
@@ -43,6 +46,14 @@ export function AgentTraceDrawer({
   const allSuccessful = allApiCalls.every(
     (c) => c.statusCode >= 200 && c.statusCode < 300
   );
+
+  const streamLabels: Record<string, string> = {
+    sentinel2: "Sentinel-2 STAC",
+    soilForecast: "ERA5 Soil Grid",
+    soilProfile: "ISRIC SoilGrids",
+    monsoon: "Monsoon Reanalysis",
+    mandi: "Agmarknet APMC",
+  };
 
   return (
     <div className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-none overflow-hidden transition-colors">
@@ -65,7 +76,7 @@ export function AgentTraceDrawer({
               </span>
             </div>
             <p className="text-[11px] text-[#A7A7A7] font-mono mt-0.5">
-              Pipeline telemetry, node execution timing & payload verification
+              Pipeline telemetry, node execution timing & provenance verification
             </p>
           </div>
         </div>
@@ -97,6 +108,46 @@ export function AgentTraceDrawer({
       {/* Collapsible Drawer Content */}
       {isOpen && (
         <div className="p-5 space-y-4 bg-[#121212] font-mono text-xs">
+          {/* Data Stream Provenance Status Strip */}
+          {provenance && Object.keys(provenance).length > 0 && (
+            <div className="p-3 bg-[#1a1a1a] border border-[#262626] rounded-none space-y-2">
+              <div className="flex items-center justify-between text-[11px] text-[#A7A7A7] uppercase font-semibold">
+                <span className="flex items-center gap-1.5">
+                  <Database className="w-3.5 h-3.5 text-[#9CAF88]" />
+                  Data Stream Provenance (Zero Dummy Data Guarantee)
+                </span>
+                <span className="text-[10px] text-[#707070]">
+                  {Object.values(provenance).filter((p) => p.status === "live").length} / {Object.keys(provenance).length} Streams Live
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+                {Object.entries(provenance).map(([key, p]) => {
+                  const statusClass =
+                    p.status === "live"
+                      ? "bg-[#242A20] text-[#9CAF88] border-[#9CAF88]"
+                      : p.status === "cached"
+                      ? "bg-[#222222] text-[#A7A7A7] border-[#383838]"
+                      : "bg-[#2C180E] text-[#CC5500] border-[#CC5500]";
+
+                  return (
+                    <div
+                      key={key}
+                      className="p-2 bg-[#121212] border border-[#262626] flex items-center justify-between text-[11px] rounded-none"
+                      title={p.error ? `Error: ${p.error}` : `${p.source} (Fetched: ${p.fetchedAt})`}
+                    >
+                      <span className="truncate text-[#E6E6E6] mr-1.5 font-medium">
+                        {streamLabels[key] || p.source}
+                      </span>
+                      <span className={`px-1.5 py-0.2 text-[9px] font-bold border uppercase shrink-0 ${statusClass}`}>
+                        {p.status}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Node Selector Stepper */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2.5">
             {[1, 2, 3, 4].map((nodeNum) => {

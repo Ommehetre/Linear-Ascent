@@ -18,6 +18,7 @@ interface MitigationReportProps {
   riskClassification: string;
   riskLevel: RiskLevel;
   citations: CitationTag[];
+  confidence?: number;
   loading?: boolean;
   onExport: (format: "pdf" | "json") => void;
   exporting?: boolean;
@@ -28,6 +29,7 @@ export function MitigationReport({
   riskClassification,
   riskLevel,
   citations,
+  confidence,
   loading,
   onExport,
   exporting,
@@ -61,11 +63,30 @@ export function MitigationReport({
             <ShieldAlert className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-bold text-[#F4F4F4] uppercase tracking-wide">
                 {riskClassification}
               </span>
               <Badge variant={riskLevel}>{riskLevel.toUpperCase()}</Badge>
+              {typeof confidence === "number" && (
+                <span
+                  className="inline-flex items-center px-2 py-0.5 text-[11px] font-mono font-medium border rounded-none tracking-wider uppercase bg-[#121212] border-[#262626] text-[#A7A7A7]"
+                  title={`Live Stream Provenance Confidence: ${(confidence * 100).toFixed(0)}%`}
+                >
+                  <span className="text-[#707070] mr-1">Confidence:</span>
+                  <span
+                    className={
+                      confidence >= 0.8
+                        ? "text-[#9CAF88] font-bold"
+                        : confidence >= 0.5
+                        ? "text-[#F4F4F4] font-bold"
+                        : "text-[#CC5500] font-bold"
+                    }
+                  >
+                    {(confidence * 100).toFixed(0)}%
+                  </span>
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-[#A7A7A7] mt-0.5">
               Automated Agronomic Mitigation Directive

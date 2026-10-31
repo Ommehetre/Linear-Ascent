@@ -145,7 +145,7 @@ function TerraPulsePdfReport({ report }: { report: AgentReport }) {
           <View style={styles.row}>
             <Text style={styles.label}>Target Crop / Ky Factor:</Text>
             <Text style={styles.value}>
-              {report.location.crop} (Crop Water Sensitivity Factor Ky: {report.yieldOutput.ky})
+              {report.location.crop} (Crop Water Sensitivity Factor Ky: {report.yieldOutput ? report.yieldOutput.ky : "N/A"})
             </Text>
           </View>
         </View>
@@ -153,28 +153,34 @@ function TerraPulsePdfReport({ report }: { report: AgentReport }) {
         {/* Yield Math */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>2. Deterministic FAO-33 Crop Water Production Math</Text>
-          <View style={styles.box}>
-            <View style={styles.row}>
-              <Text style={styles.label}>Predicted Yield Reduction:</Text>
-              <Text style={styles.value}>{report.yieldOutput.yieldReductionPct.toFixed(1)}%</Text>
+          {report.yieldOutput ? (
+            <View style={styles.box}>
+              <View style={styles.row}>
+                <Text style={styles.label}>Predicted Yield Reduction:</Text>
+                <Text style={styles.value}>{report.yieldOutput.yieldReductionPct.toFixed(1)}%</Text>
+              </View>
+              <View style={styles.row}>
+                <Text style={styles.label}>Estimated Realized Yield:</Text>
+                <Text style={styles.value}>
+                  {report.yieldOutput.estimatedYield_t_ha.toFixed(2)} t/ha (Potential Max: {report.yieldOutput.maxYield_t_ha} t/ha)
+                </Text>
+              </View>
+              <View style={styles.row}>
+                <Text style={styles.label}>Soil Moisture Deficit Index (SMDI):</Text>
+                <Text style={styles.value}>{report.yieldOutput.smdi.toFixed(3)}</Text>
+              </View>
+              <View style={styles.row}>
+                <Text style={styles.label}>Deficit Irrigation Needed to Restore FC:</Text>
+                <Text style={styles.value}>
+                  {report.yieldOutput.irrigationDeficit_L_ha.toLocaleString()} Liters / Hectare
+                </Text>
+              </View>
             </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Estimated Realized Yield:</Text>
-              <Text style={styles.value}>
-                {report.yieldOutput.estimatedYield_t_ha.toFixed(2)} t/ha (Potential Max: {report.yieldOutput.maxYield_t_ha} t/ha)
-              </Text>
+          ) : (
+            <View style={styles.box}>
+              <Text style={styles.value}>Deterministic yield model unavailable: Insufficient live telemetry inputs</Text>
             </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Soil Moisture Deficit Index (SMDI):</Text>
-              <Text style={styles.value}>{report.yieldOutput.smdi.toFixed(3)}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Deficit Irrigation Needed to Restore FC:</Text>
-              <Text style={styles.value}>
-                {report.yieldOutput.irrigationDeficit_L_ha.toLocaleString()} Liters / Hectare
-              </Text>
-            </View>
-          </View>
+          )}
         </View>
 
         {/* Soil Profile & Monsoon */}
@@ -183,18 +189,24 @@ function TerraPulsePdfReport({ report }: { report: AgentReport }) {
           <View style={styles.row}>
             <Text style={styles.label}>Soil Hydraulic Limits (ISRIC SoilGrids):</Text>
             <Text style={styles.value}>
-              FC: {report.soilProfile.fieldCapacity.toFixed(3)} m³/m³ | WP: {report.soilProfile.wiltingPoint.toFixed(3)} m³/m³ | Clay: {report.soilProfile.clay_pct.toFixed(1)}%
+              {report.soilProfile
+                ? `FC: ${report.soilProfile.fieldCapacity.toFixed(3)} m³/m³ | WP: ${report.soilProfile.wiltingPoint.toFixed(3)} m³/m³ | Clay: ${report.soilProfile.clay_pct.toFixed(1)}%`
+                : "Unavailable (Stream offline)"}
             </Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Indian Monsoon Long Period Average (LPA):</Text>
             <Text style={styles.value}>
-              {report.monsoonData.lpa_mm.toFixed(1)} mm (Deviation: {report.monsoonData.lpa_deviation_pct > 0 ? "+" : ""}{report.monsoonData.lpa_deviation_pct.toFixed(1)}%)
+              {report.monsoonData
+                ? `${report.monsoonData.lpa_mm.toFixed(1)} mm (Deviation: ${report.monsoonData.lpa_deviation_pct > 0 ? "+" : ""}${report.monsoonData.lpa_deviation_pct.toFixed(1)}%)`
+                : "Unavailable (Stream offline)"}
             </Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Standardized Precip-ET Index (SPEI):</Text>
-            <Text style={styles.value}>{report.monsoonData.spei.toFixed(2)}</Text>
+            <Text style={styles.value}>
+              {report.monsoonData ? report.monsoonData.spei.toFixed(2) : "Unavailable"}
+            </Text>
           </View>
         </View>
 

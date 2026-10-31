@@ -1,9 +1,11 @@
 // =============================================================================
 // TerraPulse — 4-Node Autonomous Agent Orchestrator
 // Powered by @google/genai (Gemini 2.5 Flash)
+// Strictly Zero Dummy Data Compliant
 // =============================================================================
 
 import { GoogleGenAI } from "@google/genai";
+import { z } from "zod";
 import type {
   FarmLocation,
   CropType,
@@ -18,6 +20,7 @@ import type {
   RiskLevel,
   CitationTag,
   MitigationPlan,
+  DataProvenance,
 } from "@/types";
 import {
   fetchSentinelScenes,
@@ -27,6 +30,8 @@ import {
   fetchMandiPrices,
 } from "@/services/liveIngestion";
 import { computeYieldForecast } from "@/services/yieldEngine";
+
+const RiskLevelEnum = z.enum(["low", "medium", "high", "severe"]);
 
 /**
  * Initialize the Google GenAI client with key from environment
@@ -45,7 +50,7 @@ function getGenAiClient(): GoogleGenAI {
  */
 async function runVisionAnalysis(
   scenes: SentinelScene[],
-  soilProfile: SoilProfile,
+  soilProfile: SoilProfile | null,
   trace: AgentTraceStep[]
 ): Promise<string> {
   const startTime = Date.now();
@@ -57,52 +62,53 @@ async function runVisionAnalysis(
   };
   trace.push(step);
 
+  const scene = scenes[0];
+  if (!scene) {
+    step.status = "fallback";
+    step.fallbackReason = "No cloud-free Sentinel-2 scenes available for current window.";
+    step.output = "Visual inspection bypassed: Satellite coverage gap or complete cloud obstruction. No synthetic optical estimates used.";
+    step.durationMs = Date.now() - startTime;
+    return step.output;
+  }
+
+  const imgUrl = scene.thumbnailHref || scene.visualHref;
+  let base64Img = "";
+  let mimeType = "image/jpeg";
+
   try {
-    const ai = getGenAiClient();
-    const scene = scenes[0];
+    const fetchStart = Date.now();
+    const imgRes = await fetch(imgUrl, { signal: AbortSignal.timeout(10000) });
+    const fetchLatency = Date.now() - fetchStart;
 
-    if (!scene) {
-      step.status = "fallback";
-      step.fallbackReason = "No cloud-free Sentinel-2 scenes available for current window.";
-      step.output = "Visual inspection bypassed: Satellite coverage gap or complete cloud obstruction.";
-      step.durationMs = Date.now() - startTime;
-      return step.output;
+    step.apiCalls.push({
+      url: imgUrl,
+      method: "GET",
+      statusCode: imgRes.status,
+      latencyMs: fetchLatency,
+      timestamp: new Date().toISOString(),
+    });
+
+    if (imgRes.ok) {
+      const arrayBuf = await imgRes.arrayBuffer();
+      base64Img = Buffer.from(arrayBuf).toString("base64");
+      mimeType = imgRes.headers.get("content-type") || "image/jpeg";
     }
+  } catch (e: any) {
+    console.warn("Could not download Sentinel image thumbnail:", e.message);
+  }
 
-    const imgUrl = scene.thumbnailHref || scene.visualHref;
-    let base64Img = "";
-    let mimeType = "image/jpeg";
+  const soilContext = soilProfile
+    ? `Target Soil Profile: Clay: ${soilProfile.clay_pct.toFixed(1)}%, Sand: ${soilProfile.sand_pct.toFixed(1)}%, pH: ${soilProfile.ph.toFixed(1)}, Field Capacity: ${soilProfile.fieldCapacity.toFixed(3)} m³/m³`
+    : "Target Soil Profile: [UNAVAILABLE - Soil hydraulic stream offline]";
 
-    try {
-      const fetchStart = Date.now();
-      const imgRes = await fetch(imgUrl, { signal: AbortSignal.timeout(10000) });
-      const fetchLatency = Date.now() - fetchStart;
-
-      step.apiCalls.push({
-        url: imgUrl,
-        method: "GET",
-        statusCode: imgRes.status,
-        latencyMs: fetchLatency,
-        timestamp: new Date().toISOString(),
-      });
-
-      if (imgRes.ok) {
-        const arrayBuf = await imgRes.arrayBuffer();
-        base64Img = Buffer.from(arrayBuf).toString("base64");
-        mimeType = imgRes.headers.get("content-type") || "image/jpeg";
-      }
-    } catch (e: any) {
-      console.warn("Could not download Sentinel image thumbnail:", e.message);
-    }
-
-    const promptText = `You are an expert satellite agro-meteorologist and remote sensing analyst for Indian agricultural regions.
+  const promptText = `You are an expert satellite agro-meteorologist and remote sensing analyst for Indian agricultural regions.
 Analyze this Sentinel-2 Level-2A imagery scene acquired over agricultural fields.
 
 Scene Metadata:
 - Scene ID: ${scene.id}
 - Acquisition Timestamp: ${scene.datetime}
 - Cloud Cover: ${scene.cloudCover.toFixed(1)}%
-- Target Soil Profile: Clay: ${soilProfile.clay_pct.toFixed(1)}%, Sand: ${soilProfile.sand_pct.toFixed(1)}%, pH: ${soilProfile.ph.toFixed(1)}, Field Capacity: ${soilProfile.fieldCapacity.toFixed(3)} m³/m³
+- ${soilContext}
 
 Analyze the optical and spatial patterns:
 1. Soil Surface Condition: Check for signs of surface crusting, drying, or topsoil moisture retention.
@@ -110,21 +116,23 @@ Analyze the optical and spatial patterns:
 3. Hydrological Balance: Detect any standing water, waterlogging in depressions, or irrigation canal flow.
 4. Spectral/Spatial Heterogeneity: Note variability in plot-level greenness.
 
-CRITICAL REQUIREMENT: For every finding or observation, cite the data source inline with [SOURCE: Sentinel-2 ${scene.id}, ${scene.datetime}].
+CRITICAL ZERO DUMMY DATA REQUIREMENT: For every finding or observation, cite the data source inline with [SOURCE: Sentinel-2 ${scene.id}, ${scene.datetime}]. If information is not visible in the imagery, say so explicitly. Never invent numbers or conditions.
 Be concise, technical, and objective (2 to 3 paragraphs).`;
 
-    const parts: any[] = [];
-    if (base64Img) {
-      parts.push({
-        inlineData: {
-          data: base64Img,
-          mimeType,
-        },
-      });
-    }
-    parts.push({ text: promptText });
+  const parts: any[] = [];
+  if (base64Img) {
+    parts.push({
+      inlineData: {
+        data: base64Img,
+        mimeType,
+      },
+    });
+  }
+  parts.push({ text: promptText });
 
-    const genStart = Date.now();
+  const genStart = Date.now();
+  try {
+    const ai = getGenAiClient();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: [{ parts }],
@@ -140,15 +148,25 @@ Be concise, technical, and objective (2 to 3 paragraphs).`;
     });
 
     const analysisText =
-      response.text || "Multimodal vision analysis completed with standard vegetation baseline.";
+      response.text || "Multimodal vision analysis completed on acquired Sentinel-2 scene.";
     step.status = "done";
     step.output = analysisText;
     step.durationMs = Date.now() - startTime;
     return analysisText;
   } catch (error: any) {
+    const genLatency = Date.now() - genStart;
+    const statusCode = error.status || error.statusCode || 500;
+    step.apiCalls.push({
+      url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      method: "POST",
+      statusCode,
+      latencyMs: genLatency,
+      timestamp: new Date().toISOString(),
+    });
+
     step.status = "error";
     step.fallbackReason = error.message;
-    step.output = `Vision analysis fallback: Remote sensing spectral analysis estimated from STAC metadata (Cloud cover: ${scenes[0]?.cloudCover ?? 0}%).`;
+    step.output = `Vision analysis unavailable: ${error.message}.`;
     step.durationMs = Date.now() - startTime;
     return step.output;
   }
@@ -160,10 +178,10 @@ Be concise, technical, and objective (2 to 3 paragraphs).`;
  */
 async function runRiskClassifier(
   location: FarmLocation,
-  yieldOutput: YieldEngineOutput,
-  monsoonData: MonsoonData,
-  soilForecast: SoilForecast,
-  soilProfile: SoilProfile,
+  yieldOutput: YieldEngineOutput | null,
+  monsoonData: MonsoonData | null,
+  soilForecast: SoilForecast | null,
+  soilProfile: SoilProfile | null,
   visionAnalysis: string,
   mandiData: MandiRecord[],
   trace: AgentTraceStep[]
@@ -182,62 +200,78 @@ async function runRiskClassifier(
   trace.push(step);
 
   const nowIso = new Date().toISOString();
-  const currentSW = soilForecast.soilMoisture_0_7.find((v) => v !== null) ?? 0.22;
-  const precip14dTotal = monsoonData.forecast14d.reduce((acc, d) => acc + d.precip_mm, 0);
+  const currentSW = soilForecast?.soilMoisture_0_7?.find((v) => v !== null) ?? null;
+  const precip14dTotal = monsoonData?.forecast14d?.reduce((acc, d) => acc + d.precip_mm, 0) ?? null;
 
-  const prompt = `You are the Lead Agro-Climatologist at TerraPulse.
-Synthesize the following deterministic model outputs, satellite intelligence, and climatic baselines to diagnose micro-climate risks for ${location.name}, ${location.state} growing ${location.crop}.
-
----
-### 1. FAO-33 CROP WATER PRODUCTION & DETERMINISTIC YIELD MATH [SOURCE: FAO Ky Engine, ${nowIso}]:
+  // Build grounded telemetry blocks skipping unavailable inputs explicitly
+  const yieldBlock = yieldOutput
+    ? `### 1. FAO-33 CROP WATER PRODUCTION & DETERMINISTIC YIELD MATH [SOURCE: FAO Ky Engine, ${nowIso}]:
 - Crop: ${yieldOutput.crop} (Crop Water Sensitivity Ky: ${yieldOutput.ky})
 - Potential Evapotranspiration (ETm): ${yieldOutput.etm_mm} mm
 - Actual Evapotranspiration (ETa): ${yieldOutput.eta_mm} mm
 - Evapotranspiration Deficit Ratio: ${(yieldOutput.etDeficitRatio * 100).toFixed(1)}%
 - Predicted Crop Yield Reduction: ${yieldOutput.yieldReductionPct.toFixed(1)}%
 - Estimated Yield: ${yieldOutput.estimatedYield_t_ha.toFixed(2)} Tonnes/Hectare (Baseline Max: ${yieldOutput.maxYield_t_ha} t/ha)
-- Soil Moisture Deficit Index (SMDI): ${yieldOutput.smdi.toFixed(3)} (Scale: -1.0 Extreme Deficit, 0.0 Field Capacity)
-- Irrigation Deficit: ${yieldOutput.irrigationDeficit_L_ha.toLocaleString()} Liters/Hectare needed
+- Soil Moisture Deficit Index (SMDI): ${yieldOutput.smdi.toFixed(3)}
+- Irrigation Deficit: ${yieldOutput.irrigationDeficit_L_ha.toLocaleString()} Liters/Hectare needed`
+    : `### 1. FAO-33 CROP WATER PRODUCTION & DETERMINISTIC YIELD MATH:
+[UNAVAILABLE - Insufficient live soil telemetry or hydraulic parameters to compute deterministic yield loss]`;
 
-### 2. SATELLITE SOIL PROFILE & ROOT-ZONE SENSORS [SOURCE: ISRIC SoilGrids v2 & Open-Meteo ERA5]:
+  const soilBlock =
+    soilProfile && currentSW !== null
+      ? `### 2. SATELLITE SOIL PROFILE & ROOT-ZONE SENSORS [SOURCE: ISRIC SoilGrids v2 & Open-Meteo ERA5]:
 - Current Topsoil Moisture (0-7cm): ${currentSW.toFixed(3)} m³/m³
 - Root-Zone Field Capacity (FC): ${soilProfile.fieldCapacity.toFixed(3)} m³/m³
 - Plant Permanent Wilting Point (WP): ${soilProfile.wiltingPoint.toFixed(3)} m³/m³
-- Physical Composition: Clay: ${soilProfile.clay_pct.toFixed(1)}%, Sand: ${soilProfile.sand_pct.toFixed(1)}%, Organic Carbon: ${soilProfile.soc_g_per_kg.toFixed(1)} g/kg, pH: ${soilProfile.ph.toFixed(1)}
+- Physical Composition: Clay: ${soilProfile.clay_pct.toFixed(1)}%, Sand: ${soilProfile.sand_pct.toFixed(1)}%, Organic Carbon: ${soilProfile.soc_g_per_kg.toFixed(1)} g/kg, pH: ${soilProfile.ph.toFixed(1)}`
+      : `### 2. SATELLITE SOIL PROFILE & ROOT-ZONE SENSORS:
+[UNAVAILABLE - Soil hydraulic limits or sensor feed offline]`;
 
-### 3. MONSOON ANOMALY & CLIMATE INDICES [SOURCE: Open-Meteo Archive & NASA POWER]:
+  const monsoonBlock = monsoonData
+    ? `### 3. MONSOON ANOMALY & CLIMATE INDICES [SOURCE: Open-Meteo Archive & NASA POWER]:
 - 10-Year Indian Monsoon (JJAS) LPA: ${monsoonData.lpa_mm.toFixed(1)} mm
 - Current Monsoon Rainfall Deviation vs LPA: ${monsoonData.lpa_deviation_pct > 0 ? "+" : ""}${monsoonData.lpa_deviation_pct.toFixed(1)}%
 - Standardized Precipitation Evapotranspiration Index (SPEI): ${monsoonData.spei.toFixed(2)}
-- 14-Day Accumulated Rainfall Forecast: ${precip14dTotal.toFixed(1)} mm
+- 14-Day Accumulated Rainfall Forecast: ${precip14dTotal !== null ? `${precip14dTotal.toFixed(1)} mm` : "N/A"}`
+    : `### 3. MONSOON ANOMALY & CLIMATE INDICES:
+[UNAVAILABLE - 10-year reanalysis data offline]`;
+
+  const prompt = `You are the Lead Agro-Climatologist at TerraPulse.
+Synthesize the following deterministic model outputs, satellite intelligence, and climatic baselines to diagnose micro-climate risks for ${location.name}, ${location.state} growing ${location.crop}.
+
+---
+${yieldBlock}
+
+${soilBlock}
+
+${monsoonBlock}
 
 ### 4. SATELLITE MULTIMODAL OBSERVATION [SOURCE: Sentinel-2 L2A & Gemini Vision]:
 ${visionAnalysis}
 
 ---
-TASK:
-1. Categorize the Primary Micro-Climate Risk into EXACTLY ONE of the following:
+CRITICAL ZERO DUMMY DATA POLICY:
+1. Skip all unavailable inputs. State explicitly if any data stream is offline.
+2. Under NO circumstance should you fabricate, assume, or interpolate numerical measurements for missing streams.
+3. Categorize the Primary Micro-Climate Risk into EXACTLY ONE of the following:
    - "Severe Root-Zone Drought"
    - "Moderate Soil Moisture Deficit"
    - "Unseasonal Harvest-Stage Rainfall"
    - "Heatwave Terminal Stress"
    - "Waterlogging Risk"
    - "Normal / Low Risk"
-2. Assign a Risk Severity: "low" | "medium" | "high" | "severe"
-3. Provide a grounded synthesis diagnosing the physiological condition of the crop, water balance, and stress mechanisms.
-4. STRICT COMPLIANCE RULE: Every single quantitative statement must include an inline citation tag in the exact format:
-   <cite source="DATA_SOURCE_NAME" ts="${nowIso}"/>
-   Example: The topsoil moisture is measured at 0.18 m³/m³ <cite source="Open-Meteo ERA5" ts="${nowIso}"/> which lies below field capacity <cite source="ISRIC SoilGrids v2" ts="${nowIso}"/>.
+4. Assign a Risk Severity: exactly "low", "medium", "high", or "severe".
+5. Every quantitative assertion must have an inline citation tag: <cite source="DATA_SOURCE_NAME" ts="${nowIso}"/>
 
-Format your output as:
+Format your response strictly as:
 RISK_CATEGORY: <one of the exact categories>
 RISK_LEVEL: <low | medium | high | severe>
 SYNTHESIS:
-<detailed paragraphs with <cite source="..." ts="..."/> tags>`;
+<grounded paragraphs with inline <cite source="..." ts="..."/> tags>`;
 
+  const genStart = Date.now();
   try {
     const ai = getGenAiClient();
-    const genStart = Date.now();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: [{ parts: [{ text: prompt }] }],
@@ -257,26 +291,27 @@ SYNTHESIS:
     step.status = "done";
     step.durationMs = Date.now() - startTime;
 
-    // Parse risk level and category
+    // Parse risk level strictly from RISK_LEVEL: line using zod
     let riskLevel: RiskLevel = "medium";
-    if (text.includes("RISK_LEVEL: severe") || text.toLowerCase().includes("severe")) {
-      riskLevel = "severe";
-    } else if (text.includes("RISK_LEVEL: high") || text.toLowerCase().includes("high")) {
-      riskLevel = "high";
-    } else if (text.includes("RISK_LEVEL: low") || text.toLowerCase().includes("low")) {
-      riskLevel = "low";
+    const riskLevelMatch = text.match(/^\s*RISK_LEVEL:\s*([a-zA-Z]+)/m);
+    if (riskLevelMatch && riskLevelMatch[1]) {
+      const candidate = riskLevelMatch[1].trim().toLowerCase();
+      const parsedRisk = RiskLevelEnum.safeParse(candidate);
+      if (parsedRisk.success) {
+        riskLevel = parsedRisk.data;
+      }
     }
 
     let riskClassification = "Moderate Soil Moisture Deficit";
-    const catMatch = text.match(/RISK_CATEGORY:\s*([^\n\r]+)/i);
+    const catMatch = text.match(/^\s*RISK_CATEGORY:\s*([^\n\r]+)/m);
     if (catMatch && catMatch[1]) {
       riskClassification = catMatch[1].trim();
-    } else if (yieldOutput.yieldReductionPct > 25 || yieldOutput.smdi < -0.6) {
+    } else if (yieldOutput && (yieldOutput.yieldReductionPct > 25 || yieldOutput.smdi < -0.6)) {
       riskClassification = "Severe Root-Zone Drought";
       riskLevel = "severe";
     }
 
-    // Extract citations
+    // Extract verified citations
     const citations: CitationTag[] = [];
     const citeRegex = /<cite\s+source="([^"]+)"\s+ts="([^"]+)"\s*\/>/g;
     let match;
@@ -288,35 +323,43 @@ SYNTHESIS:
       });
     }
 
-    // Ensure at least baseline citations exist if model missed tag syntax
+    // Fallback provenance tags only for streams that were actually present
     if (citations.length === 0) {
-      citations.push(
-        { claim: "Crop Water Sensitivity & Yield Math", source: "FAO-33 Ky Yield Engine", timestamp: nowIso },
-        { claim: "Root-zone Physical Soil Hydraulic Limits", source: "ISRIC SoilGrids v2 (Saxton-Rawls)", timestamp: nowIso },
-        { claim: "10-Year Monsoon Long Period Average", source: "Open-Meteo Archive ERA5 Reanalysis", timestamp: nowIso },
-        { claim: "Satellite Optical Surface Analysis", source: "Copernicus Sentinel-2 L2A", timestamp: nowIso }
-      );
+      if (yieldOutput) citations.push({ claim: "Crop Water Sensitivity & Yield Math", source: "FAO-33 Ky Yield Engine", timestamp: nowIso });
+      if (soilProfile) citations.push({ claim: "Root-zone Physical Soil Hydraulic Limits", source: "ISRIC SoilGrids v2", timestamp: nowIso });
+      if (monsoonData) citations.push({ claim: "10-Year Monsoon Long Period Average", source: "Open-Meteo ERA5 Reanalysis", timestamp: nowIso });
     }
 
     return { riskClassification, riskLevel, citations };
   } catch (error: any) {
+    const genLatency = Date.now() - genStart;
+    const statusCode = error.status || error.statusCode || 500;
+    step.apiCalls.push({
+      url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      method: "POST",
+      statusCode,
+      latencyMs: genLatency,
+      timestamp: new Date().toISOString(),
+    });
+
     step.status = "error";
     step.fallbackReason = error.message;
     step.durationMs = Date.now() - startTime;
 
-    // Fallback classification using pure deterministic math
-    const fallbackLevel: RiskLevel =
-      yieldOutput.yieldReductionPct > 30 ? "severe" : yieldOutput.yieldReductionPct > 15 ? "high" : "medium";
-    const fallbackCategory =
-      yieldOutput.smdi < -0.5 ? "Severe Root-Zone Drought" : "Moderate Soil Moisture Deficit";
+    const fallbackLevel: RiskLevel = yieldOutput
+      ? yieldOutput.yieldReductionPct > 30 ? "severe" : yieldOutput.yieldReductionPct > 15 ? "high" : "medium"
+      : "medium";
+
+    const fallbackCategory = yieldOutput
+      ? yieldOutput.smdi < -0.5 ? "Severe Root-Zone Drought" : "Moderate Soil Moisture Deficit"
+      : "Unquantified Risk (Missing Live Telemetry)";
 
     return {
       riskClassification: fallbackCategory,
       riskLevel: fallbackLevel,
-      citations: [
-        { claim: "FAO Yield Reduction Formula", source: "FAO-33 Deterministic Engine", timestamp: nowIso },
-        { claim: "Soil Moisture Deficit Index", source: "ISRIC SoilGrids v2 & Open-Meteo", timestamp: nowIso },
-      ],
+      citations: yieldOutput
+        ? [{ claim: "FAO Yield Reduction Formula", source: "FAO-33 Deterministic Engine", timestamp: nowIso }]
+        : [],
     };
   }
 }
@@ -329,9 +372,9 @@ async function runMitigationEngine(
   location: FarmLocation,
   riskClassification: string,
   riskLevel: RiskLevel,
-  yieldOutput: YieldEngineOutput,
+  yieldOutput: YieldEngineOutput | null,
   mandiData: MandiRecord[],
-  soilProfile: SoilProfile,
+  soilProfile: SoilProfile | null,
   trace: AgentTraceStep[]
 ): Promise<MitigationPlan> {
   const startTime = Date.now();
@@ -343,7 +386,6 @@ async function runMitigationEngine(
   };
   trace.push(step);
 
-  const nowIso = new Date().toISOString();
   const topMandis = mandiData.slice(0, 6);
   const mandiSummary =
     topMandis.length > 0
@@ -353,33 +395,46 @@ async function runMitigationEngine(
               `- ${m.market} (${m.state}): Modal Price ₹${m.modal_price}/quintal [Range: ₹${m.min_price}-₹${m.max_price}, Date: ${m.arrival_date}]`
           )
           .join("\n")
-      : "- Regional Mandi Prices: ₹2,400 to ₹3,100 per quintal across Western and Central state APMC markets [SOURCE: Agmarknet Historical Base]";
+      : "- Real-time Agmarknet mandi market data is unavailable for this commodity and region. Do not invent or assume prices.";
+
+  const diagnosticSection = [
+    `- Primary Micro-Climate Risk: ${riskClassification} (Severity: ${riskLevel.toUpperCase()})`,
+    yieldOutput
+      ? `- Deterministic Yield Impact: ${yieldOutput.yieldReductionPct.toFixed(1)}% expected yield reduction [SOURCE: FAO Ky Engine]`
+      : "- Deterministic Yield Impact: [UNAVAILABLE - Requires live soil & weather telemetry]",
+    yieldOutput
+      ? `- Forecasted Production: ${yieldOutput.estimatedYield_t_ha.toFixed(2)} t/ha vs ${yieldOutput.maxYield_t_ha} t/ha potential`
+      : "- Forecasted Production: [UNAVAILABLE]",
+    yieldOutput && soilProfile
+      ? `- Soil Moisture Deficit: ${yieldOutput.irrigationDeficit_L_ha.toLocaleString()} Liters/Hectare to restore Field Capacity (${soilProfile.fieldCapacity.toFixed(3)} m³/m³)`
+      : "- Soil Moisture Deficit: [UNAVAILABLE - Requires verified soil hydraulic telemetry]",
+    soilProfile
+      ? `- Soil Texture: ${soilProfile.clay_pct.toFixed(1)}% Clay, ${soilProfile.sand_pct.toFixed(1)}% Sand`
+      : "- Soil Texture: [UNAVAILABLE - ISRIC SoilGrids offline]",
+  ].join("\n");
 
   const prompt = `You are the Agricultural Operations & Supply Chain Director at TerraPulse.
 Create an immediate, concrete, and quantified Risk Mitigation Plan for a ${location.crop} farm in ${location.name}, ${location.state}.
 
 DIAGNOSTIC STATUS:
-- Primary Micro-Climate Risk: ${riskClassification} (Severity: ${riskLevel.toUpperCase()})
-- Deterministic Yield Impact: ${yieldOutput.yieldReductionPct.toFixed(1)}% expected yield reduction [SOURCE: FAO Ky Engine]
-- Forecasted Production: ${yieldOutput.estimatedYield_t_ha.toFixed(2)} t/ha vs ${yieldOutput.maxYield_t_ha} t/ha potential
-- Soil Moisture Deficit: ${yieldOutput.irrigationDeficit_L_ha.toLocaleString()} Liters/Hectare to restore Field Capacity (${soilProfile.fieldCapacity.toFixed(3)} m³/m³)
-- Soil Texture: ${soilProfile.clay_pct.toFixed(1)}% Clay, ${soilProfile.sand_pct.toFixed(1)}% Sand
+${diagnosticSection}
 
 LIVE MANDI MARKET CONTEXT [SOURCE: Data.gov.in Agmarknet API]:
 ${mandiSummary}
 
+CRITICAL ZERO DUMMY DATA REQUIREMENT:
+- Skip unavailable inputs. Never hallucinate pricing or moisture numbers if not verified above.
+- If Mandi data is unavailable, advise on physical storage or local APMC receipt procedures without naming invented prices.
+
 YOUR ACTION PLAN MUST INCLUDE:
 1. AGRONOMIC INTERVENTION:
-   - Provide an exact 7-day deficit irrigation schedule (liters/ha/day, cycle frequency, and optimum application timing, e.g., early morning/drip).
-   - Specific soil moisture conservation tactics (mulching type, anti-transpirants, foliar potassium/zinc sprays, or shallow inter-row cultivation).
+   - Provide an exact 7-day deficit irrigation schedule or conservation tactics.
+   - Specific soil moisture conservation tactics (mulching type, anti-transpirants, foliar potassium/zinc sprays, or shallow cultivation).
 2. HARVEST & LOGISTICS ROUTING:
-   - Advise whether to initiate accelerated early harvest or maintain crop until maturity based on moisture forecasts.
-   - Mandi selection: specific price optimization routing to capitalize on highest price spreads among active markets.
-   - Cold chain & on-farm storage recommendations to protect crop quality against heat or moisture damage.
+   - Advise whether to maintain crop until maturity or accelerate monitoring based on moisture forecasts.
+   - Mandi selection: specific price optimization routing using verified prices above, or APMC warehouse protocol if offline.
 3. ECONOMIC RISK PROTECTION:
-   - Estimate the economic loss prevented by executing the mitigation plan (₹ per hectare).
-
-CRITICAL: Include verified [SOURCE: ...] tags for all numeric prescriptions.
+   - Practical risk mitigation guidance for ${location.crop}.
 
 Format as:
 RECOMMENDATIONS:
@@ -390,9 +445,9 @@ RECOMMENDATIONS:
 HARVEST_ADVICE: <concrete harvest timing paragraph>
 MANDI_ROUTING: <concrete logistics and price optimization routing paragraph>`;
 
+  const genStart = Date.now();
   try {
     const ai = getGenAiClient();
-    const genStart = Date.now();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: [{ parts: [{ text: prompt }] }],
@@ -426,16 +481,23 @@ MANDI_ROUTING: <concrete logistics and price optimization routing paragraph>`;
     }
 
     if (recommendations.length === 0) {
-      recommendations.push(
-        `Apply phased deficit drip irrigation of ${Math.round(yieldOutput.irrigationDeficit_L_ha / 7).toLocaleString()} L/ha/day between 04:00-08:00 AM to minimize evaporative loss.`,
-        "Spread organic straw mulching (5 cm thickness) across crop furrows to reduce surface evaporation by up to 35%.",
-        "Foliar spray of 1% Potassium Nitrate (KNO3) to enhance stomatal regulation and drought tolerance.",
-        "Suspend top-dressing of synthetic nitrogen until root-zone moisture recovers above wilting point threshold."
-      );
+      if (yieldOutput) {
+        recommendations.push(
+          `Apply phased deficit drip irrigation of ${Math.round(yieldOutput.irrigationDeficit_L_ha / 7).toLocaleString()} L/ha/day between 04:00-08:00 AM to minimize evaporative loss.`,
+          "Spread organic straw mulching across crop furrows to reduce surface evaporation.",
+          "Foliar spray of 1% Potassium Nitrate (KNO3) to enhance stomatal regulation and drought tolerance."
+        );
+      } else {
+        recommendations.push(
+          "Conduct field inspection of root-zone condition to gauge local moisture depletion.",
+          "Apply organic surface mulching to conserve existing soil moisture reserves.",
+          "Maintain daily scouting for terminal crop stress."
+        );
+      }
     }
 
     // Extract harvest advice
-    let harvestAdvice = "Monitor grain moisture levels daily; prepare harvesting machinery for optimal harvest window.";
+    let harvestAdvice = "Monitor crop development daily; ensure moisture levels are checked prior to harvest operations.";
     const harvestMatch = rawText.match(/HARVEST_ADVICE:([\s\S]*?)(?=MANDI_ROUTING:|$)/i);
     if (harvestMatch && harvestMatch[1]) {
       harvestAdvice = harvestMatch[1].trim();
@@ -444,39 +506,54 @@ MANDI_ROUTING: <concrete logistics and price optimization routing paragraph>`;
     // Extract mandi routing
     let mandiRouting =
       topMandis.length > 0
-        ? `Route primary produce to ${topMandis[0].market} realizing ₹${topMandis[0].modal_price}/quintal, avoiding regional transit corridors prone to transit delays.`
-        : "Distribute harvest across district APMC mandis with verified electronic weighing and transparent auction prices.";
+        ? `Route primary produce to ${topMandis[0].market} realizing ₹${topMandis[0].modal_price}/quintal.`
+        : "Real-time mandi prices unavailable; coordinate with local APMC market yard for verified electronic auction rates.";
     const mandiMatch = rawText.match(/MANDI_ROUTING:([\s\S]*?)$/i);
     if (mandiMatch && mandiMatch[1]) {
       mandiRouting = mandiMatch[1].trim();
     }
 
     return {
-      irrigationDeficit_L_ha: yieldOutput.irrigationDeficit_L_ha,
+      irrigationDeficit_L_ha: yieldOutput?.irrigationDeficit_L_ha ?? 0,
       recommendations,
       harvestAdvice,
       mandiRouting,
       rawText,
     };
   } catch (error: any) {
+    const genLatency = Date.now() - genStart;
+    const statusCode = error.status || error.statusCode || 500;
+    step.apiCalls.push({
+      url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      method: "POST",
+      statusCode,
+      latencyMs: genLatency,
+      timestamp: new Date().toISOString(),
+    });
+
     step.status = "error";
     step.fallbackReason = error.message;
     step.durationMs = Date.now() - startTime;
 
     return {
-      irrigationDeficit_L_ha: yieldOutput.irrigationDeficit_L_ha,
-      recommendations: [
-        `Deliver targeted deficit irrigation of ${Math.round(yieldOutput.irrigationDeficit_L_ha / 7).toLocaleString()} L/ha/day over next 7 days [SOURCE: FAO-56].`,
-        "Deploy organic residue mulching across inter-row spaces to prevent soil crusting and moisture transpiration.",
-        "Implement foliar potassium application to preserve cell turgor pressure during peak heat hours.",
-      ],
+      irrigationDeficit_L_ha: yieldOutput?.irrigationDeficit_L_ha ?? 0,
+      recommendations: yieldOutput
+        ? [
+            `Deliver targeted deficit irrigation of ${Math.round(yieldOutput.irrigationDeficit_L_ha / 7).toLocaleString()} L/ha/day over next 7 days [SOURCE: FAO-56].`,
+            "Deploy organic residue mulching across inter-row spaces to prevent soil crusting and moisture loss.",
+            "Implement foliar potassium application to preserve cell turgor pressure during peak heat hours.",
+          ]
+        : [
+            "Monitor root-zone moisture daily using physical probe measurements.",
+            "Apply surface mulching across crop rows to conserve existing soil moisture.",
+          ],
       harvestAdvice:
         "Proceed with scheduled harvest monitoring. Ensure grain or fibre moisture is within safety margins before transport.",
       mandiRouting:
         topMandis[0]
           ? `Target ${topMandis[0].market} (${topMandis[0].state}) for modal price realization of ₹${topMandis[0].modal_price}/quintal.`
           : "Coordinate with nearest APMC hub for real-time electronic warehouse receipt financing.",
-      rawText: "Fallback deterministic agronomic mitigation plan generated.",
+      rawText: "Deterministic agronomic mitigation plan generated without invented data.",
     };
   }
 }
@@ -489,6 +566,7 @@ export async function executeAgentPipeline(
   crop: CropType
 ): Promise<AgentReport> {
   const trace: AgentTraceStep[] = [];
+  const nowIso = new Date().toISOString();
 
   // =========================================================================
   // NODE 1: Autonomous Telemetry Harvester & Self-Healing Router
@@ -512,73 +590,96 @@ export async function executeAgentPipeline(
       fetchMandiPrices(location.state, crop, trace),
     ]);
 
-  // Extract or fallback
+  // Extract real live streams or set strictly to null (NO DUMMY DATA)
   const scenes = scenesResult.status === "fulfilled" ? scenesResult.value : [];
-  if (scenesResult.status === "rejected") {
-    harvesterStep.fallbackReason = `STAC scene retrieval fallback: ${scenesResult.reason?.message}`;
-  }
+  const soilForecast: SoilForecast | null =
+    soilResult.status === "fulfilled" ? soilResult.value : null;
+  const soilProfile: SoilProfile | null =
+    profileResult.status === "fulfilled" ? profileResult.value : null;
+  const monsoonData: MonsoonData | null =
+    monsoonResult.status === "fulfilled" ? monsoonResult.value : null;
+  const mandiData: MandiRecord[] =
+    mandiResult.status === "fulfilled" ? mandiResult.value : [];
 
-  const soilForecast: SoilForecast =
-    soilResult.status === "fulfilled"
-      ? soilResult.value
-      : {
-          time: Array.from({ length: 24 }, (_, i) => `${i}:00`),
-          soilMoisture_0_7: Array(24).fill(0.24),
-          soilMoisture_7_28: Array(24).fill(0.28),
-          soilMoisture_28_100: Array(24).fill(0.32),
-          soilTemp_0_7: Array(24).fill(28.5),
-          soilTemp_7_28: Array(24).fill(26.0),
-          et0Daily: {
-            time: ["Day 1", "Day 2", "Day 3"],
-            values: [4.2, 4.5, 4.3],
-          },
-        };
+  // Build DataProvenance dictionary
+  const provenance: Record<string, DataProvenance> = {
+    sentinel2: {
+      source: "Copernicus Sentinel-2 L2A STAC Asset",
+      status: scenesResult.status === "fulfilled" && scenesResult.value.length > 0 ? "live" : "unavailable",
+      fetchedAt: nowIso,
+      error:
+        scenesResult.status === "rejected"
+          ? scenesResult.reason?.message
+          : scenesResult.status === "fulfilled" && scenesResult.value.length === 0
+          ? "No cloud-free optical scenes found in search window"
+          : undefined,
+    },
+    soilForecast: {
+      source: "Open-Meteo ERA5 Seamless Soil Forecast",
+      status: soilResult.status === "fulfilled" ? "live" : "unavailable",
+      fetchedAt: nowIso,
+      error: soilResult.status === "rejected" ? soilResult.reason?.message : undefined,
+    },
+    soilProfile: {
+      source: "ISRIC SoilGrids v2 & Saxton-Rawls PTF",
+      status: profileResult.status === "fulfilled" ? "live" : "unavailable",
+      fetchedAt: nowIso,
+      error: profileResult.status === "rejected" ? profileResult.reason?.message : undefined,
+    },
+    monsoon: {
+      source: "Open-Meteo Historical Reanalysis & NASA POWER",
+      status: monsoonResult.status === "fulfilled" ? "live" : "unavailable",
+      fetchedAt: nowIso,
+      error: monsoonResult.status === "rejected" ? monsoonResult.reason?.message : undefined,
+    },
+    mandi: {
+      source: "Data.gov.in Agmarknet Market Feed",
+      status: mandiResult.status === "fulfilled" && mandiResult.value.length > 0 ? "live" : "unavailable",
+      fetchedAt: nowIso,
+      error:
+        mandiResult.status === "rejected"
+          ? mandiResult.reason?.message
+          : mandiResult.status === "fulfilled" && mandiResult.value.length === 0
+          ? "No active mandi arrivals recorded for this state/crop"
+          : undefined,
+    },
+  };
 
-  const soilProfile: SoilProfile =
-    profileResult.status === "fulfilled"
-      ? profileResult.value
-      : {
-          clay_pct: 28.0,
-          sand_pct: 42.0,
-          silt_pct: 30.0,
-          ph: 7.2,
-          soc_g_per_kg: 8.5,
-          bulk_density_g_cm3: 1.35,
-          fieldCapacity: 0.31,
-          wiltingPoint: 0.16,
-          availableWaterCapacity: 0.15,
-        };
+  // Compute confidence score (0.0 - 1.0) based on live telemetry availability
+  const streams = Object.values(provenance);
+  const liveCount = streams.filter((s) => s.status === "live").length;
+  const cachedCount = streams.filter((s) => s.status === "cached").length;
+  const confidence = Number(((liveCount * 1.0 + cachedCount * 0.7) / streams.length).toFixed(2));
 
-  const monsoonData: MonsoonData =
-    monsoonResult.status === "fulfilled"
-      ? monsoonResult.value
-      : {
-          historical: Array.from({ length: 10 }, (_, i) => ({
-            year: 2015 + i,
-            jjas_mm: 850 + Math.sin(i) * 120,
-          })),
-          lpa_mm: 887.5,
-          lpa_deviation_pct: -8.4,
-          forecast14d: Array.from({ length: 14 }, (_, i) => ({
-            date: `2026-11-${String(i + 1).padStart(2, "0")}`,
-            precip_mm: i % 4 === 0 ? 3.5 : 0.0,
-            et0_mm: 3.8 + (i % 3) * 0.3,
-          })),
-          spei: -0.65,
-          nasaPower: {
-            T2M: {},
-            PRECTOTCORR: {},
-            EVPTRNS: {},
-            WS2M: {},
-            RH2M: {},
-          },
-        };
+  // Determine real live vs failed stream lists for honest Node 1 telemetry reporting
+  const liveStreamNames: string[] = [];
+  const failedStreamNames: string[] = [];
 
-  const mandiData = mandiResult.status === "fulfilled" ? mandiResult.value : [];
+  if (scenes.length > 0) liveStreamNames.push(`Sentinel-2 (${scenes.length} scenes)`);
+  else failedStreamNames.push("Sentinel-2 STAC");
 
-  harvesterStep.status = "done";
+  if (soilForecast) liveStreamNames.push("Open-Meteo Soil Forecast");
+  else failedStreamNames.push("Open-Meteo Soil Forecast");
+
+  if (soilProfile) liveStreamNames.push("ISRIC SoilGrids");
+  else failedStreamNames.push("ISRIC SoilGrids");
+
+  if (monsoonData) liveStreamNames.push("Monsoon Reanalysis (10-yr)");
+  else failedStreamNames.push("Monsoon Reanalysis");
+
+  if (mandiData.length > 0) liveStreamNames.push(`Agmarknet Mandi (${mandiData.length} records)`);
+  else failedStreamNames.push("Agmarknet Mandi");
+
   harvesterStep.durationMs = Date.now() - node1Start;
-  harvesterStep.output = `Successfully ingested 5 live streams: Sentinel-2 (${scenes.length} scenes), Open-Meteo Soil (14d forecast), ISRIC SoilGrids, Monsoon Archive (10-yr JJAS), and Agmarknet Mandi (${mandiData.length} records).`;
+
+  if (failedStreamNames.length === 0) {
+    harvesterStep.status = "done";
+    harvesterStep.output = `Successfully ingested 5/5 live streams: ${liveStreamNames.join(", ")}. Provenance confidence: ${(confidence * 100).toFixed(0)}%.`;
+  } else {
+    harvesterStep.status = liveStreamNames.length > 0 ? "fallback" : "error";
+    harvesterStep.fallbackReason = `Streams offline (${failedStreamNames.length}/5): ${failedStreamNames.join(", ")}`;
+    harvesterStep.output = `Ingestion active on ${liveStreamNames.length}/5 streams (${liveStreamNames.join(", ")}). Unavailable streams (${failedStreamNames.length}): ${failedStreamNames.join(", ")}. Zero dummy data generated.`;
+  }
 
   // =========================================================================
   // NODE 2: Multimodal Vision & Spectral Analyst
@@ -586,23 +687,25 @@ export async function executeAgentPipeline(
   const visionAnalysis = await runVisionAnalysis(scenes, soilProfile, trace);
 
   // =========================================================================
-  // DETERMINISTIC FAO YIELD ENGINE COMPUTATION
+  // DETERMINISTIC FAO YIELD ENGINE COMPUTATION (Only if real inputs exist)
   // =========================================================================
-  const currentSW =
-    soilForecast.soilMoisture_0_7.find((v) => v !== null && v > 0) ?? 0.22;
-  const et0Sum = monsoonData.forecast14d.reduce((s, d) => s + d.et0_mm, 0);
-  const etm_mm = Math.max(20, et0Sum);
-  // Actual ET is scaled by current moisture availability relative to Field Capacity
-  const moistureRatio = Math.min(1.0, currentSW / soilProfile.fieldCapacity);
-  const eta_mm = etm_mm * moistureRatio;
+  let yieldOutput: YieldEngineOutput | null = null;
+  const currentSW = soilForecast?.soilMoisture_0_7?.find((v) => v !== null && v > 0) ?? null;
 
-  const yieldOutput = computeYieldForecast({
-    crop,
-    eta_mm,
-    etm_mm,
-    soilProfile,
-    currentSW,
-  });
+  if (soilProfile && currentSW !== null && monsoonData && monsoonData.forecast14d?.length > 0) {
+    const et0Sum = monsoonData.forecast14d.reduce((s, d) => s + d.et0_mm, 0);
+    const etm_mm = Math.max(20, et0Sum);
+    const moistureRatio = Math.min(1.0, currentSW / soilProfile.fieldCapacity);
+    const eta_mm = etm_mm * moistureRatio;
+
+    yieldOutput = computeYieldForecast({
+      crop,
+      eta_mm,
+      etm_mm,
+      soilProfile,
+      currentSW,
+    });
+  }
 
   // =========================================================================
   // NODE 3: Micro-Climate Risk & Yield Forecaster
@@ -633,8 +736,10 @@ export async function executeAgentPipeline(
 
   return {
     location,
-    generatedAt: new Date().toISOString(),
+    generatedAt: nowIso,
     trace,
+    provenance,
+    confidence,
     scenes,
     soilForecast,
     soilProfile,

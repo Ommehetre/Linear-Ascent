@@ -4,11 +4,11 @@ import React, { useEffect, useState } from "react";
 import { Radio, RefreshCw } from "lucide-react";
 
 interface TelemetryPoint {
-  soilMoisture_0_7: number;
-  soilMoisture_7_28: number;
-  soilMoisture_28_100: number;
-  soilTemp_0_7: number;
-  et0_today: number;
+  soilMoisture_0_7: number | null;
+  soilMoisture_7_28: number | null;
+  soilMoisture_28_100: number | null;
+  soilTemp_0_7: number | null;
+  et0_today: number | null;
   source: string;
   ts: string;
 }
@@ -33,11 +33,11 @@ export function LiveSoilFeed({ lat, lon }: { lat: number; lon: number }) {
         try {
           const data = JSON.parse(e.data);
           const point: TelemetryPoint = {
-            soilMoisture_0_7: data.payload?.soilMoisture_0_7 ?? 0.22,
-            soilMoisture_7_28: data.payload?.soilMoisture_7_28 ?? 0.26,
-            soilMoisture_28_100: data.payload?.soilMoisture_28_100 ?? 0.3,
-            soilTemp_0_7: data.payload?.soilTemp_0_7 ?? 28.0,
-            et0_today: data.payload?.et0_today ?? 4.2,
+            soilMoisture_0_7: typeof data.payload?.soilMoisture_0_7 === "number" ? data.payload.soilMoisture_0_7 : null,
+            soilMoisture_7_28: typeof data.payload?.soilMoisture_7_28 === "number" ? data.payload.soilMoisture_7_28 : null,
+            soilMoisture_28_100: typeof data.payload?.soilMoisture_28_100 === "number" ? data.payload.soilMoisture_28_100 : null,
+            soilTemp_0_7: typeof data.payload?.soilTemp_0_7 === "number" ? data.payload.soilTemp_0_7 : null,
+            et0_today: typeof data.payload?.et0_today === "number" ? data.payload.et0_today : null,
             source: data.source || "Open-Meteo ERA5",
             ts: data.ts || new Date().toISOString(),
           };
@@ -93,10 +93,16 @@ export function LiveSoilFeed({ lat, lon }: { lat: number; lon: number }) {
                 Topsoil Moisture (0-7cm)
               </span>
               <div className="mt-1">
-                <span className="text-[#9CAF88] font-bold text-lg">
-                  {latest.soilMoisture_0_7.toFixed(3)}
-                </span>
-                <span className="text-[10px] text-[#A7A7A7] ml-1">m³/m³</span>
+                {latest.soilMoisture_0_7 !== null ? (
+                  <>
+                    <span className="text-[#9CAF88] font-bold text-lg">
+                      {latest.soilMoisture_0_7.toFixed(3)}
+                    </span>
+                    <span className="text-[10px] text-[#A7A7A7] ml-1">m³/m³</span>
+                  </>
+                ) : (
+                  <span className="text-[#707070] text-sm italic">Unavailable</span>
+                )}
               </div>
             </div>
 
@@ -105,9 +111,13 @@ export function LiveSoilFeed({ lat, lon }: { lat: number; lon: number }) {
                 Soil Temperature
               </span>
               <div className="mt-1">
-                <span className="text-[#F4F4F4] font-bold text-lg">
-                  {latest.soilTemp_0_7.toFixed(1)}°C
-                </span>
+                {latest.soilTemp_0_7 !== null ? (
+                  <span className="text-[#F4F4F4] font-bold text-lg">
+                    {latest.soilTemp_0_7.toFixed(1)}°C
+                  </span>
+                ) : (
+                  <span className="text-[#707070] text-sm italic">Unavailable</span>
+                )}
               </div>
             </div>
           </div>
@@ -118,7 +128,9 @@ export function LiveSoilFeed({ lat, lon }: { lat: number; lon: number }) {
                 Subsoil (7-28cm)
               </span>
               <span className="text-[#A7A7A7] font-semibold text-sm">
-                {latest.soilMoisture_7_28.toFixed(3)} m³/m³
+                {latest.soilMoisture_7_28 !== null
+                  ? `${latest.soilMoisture_7_28.toFixed(3)} m³/m³`
+                  : "Unavailable"}
               </span>
             </div>
 
@@ -127,7 +139,9 @@ export function LiveSoilFeed({ lat, lon }: { lat: number; lon: number }) {
                 Daily Evapotranspiration
               </span>
               <span className="text-[#A7A7A7] font-semibold text-sm">
-                {latest.et0_today.toFixed(1)} mm/day
+                {latest.et0_today !== null
+                  ? `${latest.et0_today.toFixed(1)} mm/day`
+                  : "Unavailable"}
               </span>
             </div>
           </div>

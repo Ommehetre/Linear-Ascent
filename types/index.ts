@@ -142,16 +142,26 @@ export interface MitigationPlan {
   rawText: string;
 }
 
+export interface DataProvenance {
+  source: string;
+  status: "live" | "cached" | "unavailable";
+  fetchedAt: string;
+  latencyMs?: number;
+  error?: string;
+}
+
 export interface AgentReport {
   location: FarmLocation;
   generatedAt: string;
   trace: AgentTraceStep[];
+  provenance: Record<string, DataProvenance>;
+  confidence: number;
   scenes: SentinelScene[];
-  soilForecast: SoilForecast;
-  soilProfile: SoilProfile;
-  monsoonData: MonsoonData;
+  soilForecast: SoilForecast | null;
+  soilProfile: SoilProfile | null;
+  monsoonData: MonsoonData | null;
   mandiData: MandiRecord[];
-  yieldOutput: YieldEngineOutput;
+  yieldOutput: YieldEngineOutput | null;
   visionAnalysis: string;
   riskClassification: string;
   riskLevel: RiskLevel;

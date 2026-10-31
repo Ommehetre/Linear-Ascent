@@ -31,7 +31,7 @@ export async function fetchMandiPrices(
   commodity: string,
   trace: AgentTraceStep[]
 ): Promise<MandiRecord[]> {
-  const apiKey = process.env.DATA_GOV_IN_API_KEY || "";
+  const apiKey = process.env.DATA_GOV_API_KEY || process.env.DATA_GOV_IN_API_KEY || "";
   const queryCommodity = normaliseCommodity(commodity);
 
   const params = new URLSearchParams({

@@ -112,15 +112,15 @@ export async function POST(req: NextRequest) {
       try {
         listener({
           payload: {
-            soilMoisture_0_7: payload.moisture ?? payload.soilMoisture_0_7 ?? 0.25,
-            soilMoisture_7_28: payload.soilMoisture_7_28 ?? 0.28,
-            soilMoisture_28_100: payload.soilMoisture_28_100 ?? 0.30,
-            soilTemp_0_7: payload.temperature ?? payload.soilTemp_0_7 ?? 28.0,
-            et0_today: payload.et0 ?? 4.0,
-            nitrogen_ppm: payload.nitrogen,
-            phosphorus_ppm: payload.phosphorus,
-            potassium_ppm: payload.potassium,
-            ph: payload.ph,
+            soilMoisture_0_7: payload.moisture ?? payload.soilMoisture_0_7 ?? null,
+            soilMoisture_7_28: payload.soilMoisture_7_28 ?? null,
+            soilMoisture_28_100: payload.soilMoisture_28_100 ?? null,
+            soilTemp_0_7: payload.temperature ?? payload.soilTemp_0_7 ?? null,
+            et0_today: payload.et0 ?? null,
+            nitrogen_ppm: payload.nitrogen ?? null,
+            phosphorus_ppm: payload.phosphorus ?? null,
+            potassium_ppm: payload.potassium ?? null,
+            ph: payload.ph ?? null,
           },
         });
       } catch (e) {}

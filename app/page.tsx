@@ -234,6 +234,7 @@ export default function TerraPulseDashboard() {
               }
               riskLevel={report?.riskLevel ?? "medium"}
               citations={report?.citations ?? []}
+              confidence={report?.confidence}
               loading={loading}
               onExport={handleExport}
               exporting={exporting}
@@ -275,6 +276,7 @@ export default function TerraPulseDashboard() {
             isOpen={isTraceOpen}
             onToggle={() => setIsTraceOpen(!isTraceOpen)}
             rawPayload={report}
+            provenance={report?.provenance}
           />
         </div>
       </main>

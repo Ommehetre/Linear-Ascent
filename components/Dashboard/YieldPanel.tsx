@@ -10,12 +10,28 @@ interface YieldPanelProps {
 }
 
 export function YieldPanel({ yieldOutput, loading }: YieldPanelProps) {
-  if (loading || !yieldOutput) {
+  if (loading) {
     return (
       <div className="p-5 bg-[#1a1a1a] border border-[#2a2a2a] space-y-4 rounded-none animate-pulse">
         <div className="h-4 bg-[#262626] w-1/3" />
         <div className="h-16 bg-[#262626] w-full" />
         <div className="h-4 bg-[#262626] w-2/3" />
+      </div>
+    );
+  }
+
+  if (!yieldOutput) {
+    return (
+      <div className="bg-[#1a1a1a] border border-[#2a2a2a] p-5 font-mono text-xs space-y-3 rounded-none">
+        <div className="flex items-center gap-2 pb-2 border-b border-[#262626]">
+          <Sprout className="w-4 h-4 text-[#A7A7A7]" />
+          <span className="text-xs font-bold text-[#F4F4F4] uppercase tracking-wider">
+            FAO-33 Water Yield Model
+          </span>
+        </div>
+        <p className="text-[#A7A7A7] text-[11px] leading-relaxed">
+          Deterministic yield modeling is unavailable because required soil hydraulic thresholds or evapotranspiration telemetry could not be verified.
+        </p>
       </div>
     );
   }
