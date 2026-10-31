@@ -28,7 +28,7 @@ export function SoilMoistureChart({
 }: SoilMoistureChartProps) {
   if (loading || !soilForecast || !soilProfile) {
     return (
-      <div className="w-full h-80 flex flex-col items-center justify-center bg-[#1a1a1a] border border-[#2a2a2a] text-[#A7A7A7] font-mono text-xs space-y-3 rounded-none">
+      <div className="w-full h-80 flex flex-col items-center justify-center bg-[#FFFFFF] border border-[#D8D5D0] text-[#666666] font-mono text-xs space-y-3 rounded-none">
         <Droplet className="w-7 h-7 text-[#9CAF88] animate-pulse" />
         <span>Synthesizing root-zone soil hydraulic profile...</span>
       </div>
@@ -58,53 +58,48 @@ export function SoilMoistureChart({
   const isBelowFC = latestMoisture < soilProfile.fieldCapacity;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Top Soil Physics Stat Badges */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-[#121212] border border-[#262626] rounded-none">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-[#F7F5F2] border border-[#D8D5D0] rounded-none">
         <div className="flex items-center gap-2">
           <Layers className="w-4 h-4 text-[#9CAF88]" />
-          <span className="text-xs font-mono text-[#F4F4F4] font-semibold uppercase tracking-wider">
+          <span className="text-xs font-mono text-[#1A1A1A] font-semibold uppercase tracking-wider">
             Hydraulic Thresholds
           </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
-          <div className="flex items-center gap-1.5 bg-[#1a1a1a] px-2 py-1 border border-[#2a2a2a] rounded-none">
-            <span className="text-[#A7A7A7]">Clay:</span>
-            <span className="font-bold text-[#F4F4F4]">{soilProfile.clay_pct.toFixed(1)}%</span>
+          <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-2 py-1 border border-[#D8D5D0] rounded-none">
+            <span className="text-[#555555]">Clay:</span>
+            <span className="font-bold text-[#1A1A1A]">{soilProfile.clay_pct.toFixed(1)}%</span>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-[#1a1a1a] px-2 py-1 border border-[#2a2a2a] rounded-none">
-            <span className="text-[#A7A7A7]">pH:</span>
-            <span className="font-bold text-[#F4F4F4]">{soilProfile.ph.toFixed(1)}</span>
-          </div>
-
-          <div className="flex items-center gap-1.5 bg-[#242A20] text-[#9CAF88] px-2 py-1 border border-[#9CAF88] font-bold rounded-none">
-            <span>FC:</span>
-            <span>{soilProfile.fieldCapacity.toFixed(3)} m³/m³</span>
-          </div>
-
-          <div className="flex items-center gap-1.5 bg-[#2C180E] text-[#CC5500] px-2 py-1 border border-[#CC5500] font-bold rounded-none">
-            <span>WP:</span>
-            <span>{soilProfile.wiltingPoint.toFixed(3)} m³/m³</span>
+          <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-2 py-1 border border-[#D8D5D0] rounded-none">
+            <span className="text-[#555555]">pH:</span>
+            <span className="font-bold text-[#1A1A1A]">{soilProfile.ph.toFixed(1)}</span>
           </div>
 
           <div
-            className={`px-2 py-1 border font-bold rounded-none ${
-              isBelowWP || isBelowFC
-                ? "bg-[#2C180E] text-[#CC5500] border-[#CC5500]"
-                : "bg-[#242A20] text-[#9CAF88] border-[#9CAF88]"
+            className={`flex items-center gap-1.5 px-2 py-1 border font-bold rounded-none ${
+              isBelowWP
+                ? "bg-[#FDF1EB] text-[#CC5500] border-[#CC5500]"
+                : isBelowFC
+                ? "bg-[#FFFFFF] text-[#963E00] border-[#D8D5D0]"
+                : "bg-[#F1F6EE] text-[#3D5230] border-[#9CAF88]"
             }`}
           >
-            {isBelowWP ? "BELOW WILTING POINT" : isBelowFC ? "MOISTURE DEFICIT" : "ADEQUATE"}
+            <span>Status:</span>
+            <span>
+              {isBelowWP ? "Below WP" : isBelowFC ? "Deficit" : "Optimal"}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Main Multi-Depth Area Chart */}
-      <div className="w-full bg-[#121212] p-4 border border-[#262626] rounded-none">
-        <div className="flex justify-between items-center text-[11px] font-mono text-[#A7A7A7] mb-3 px-1">
-          <span className="font-semibold uppercase text-[#E6E6E6]">
+      <div className="w-full bg-[#FFFFFF] p-4 border border-[#D8D5D0] rounded-none">
+        <div className="flex justify-between items-center text-[11px] font-mono text-[#555555] mb-3 px-1">
+          <span className="font-semibold uppercase text-[#1A1A1A]">
             Root-Zone Moisture at 3 Strata (m³/m³)
           </span>
           <span className="text-[#707070]">Forecast Horizon</span>
@@ -115,36 +110,36 @@ export function SoilMoistureChart({
               data={chartData}
               margin={{ top: 10, right: 15, bottom: 5, left: -10 }}
             >
-              <CartesianGrid stroke="#262626" strokeDasharray="2 2" vertical={false} />
+              <CartesianGrid stroke="#EFECE9" strokeDasharray="2 2" vertical={false} />
               <XAxis
                 dataKey="time"
-                stroke="#5E5E5E"
-                tick={{ fill: "#A7A7A7", fontSize: 10, fontFamily: "monospace" }}
-                axisLine={{ stroke: "#2e2e2e" }}
+                stroke="#666666"
+                tick={{ fill: "#666666", fontSize: 10, fontFamily: "monospace" }}
+                axisLine={{ stroke: "#D8D5D0" }}
                 tickLine={false}
               />
               <YAxis
-                stroke="#5E5E5E"
+                stroke="#666666"
                 domain={[0, 0.55]}
-                tick={{ fill: "#A7A7A7", fontSize: 10, fontFamily: "monospace" }}
+                tick={{ fill: "#666666", fontSize: 10, fontFamily: "monospace" }}
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#1a1a1a",
-                  borderColor: "#2e2e2e",
+                  backgroundColor: "#FFFFFF",
+                  borderColor: "#D8D5D0",
                   borderRadius: 0,
                   fontSize: 11,
                   fontFamily: "monospace",
-                  color: "#F4F4F4",
+                  color: "#1A1A1A",
                 }}
               />
               <Legend
                 wrapperStyle={{ fontSize: 10, fontFamily: "monospace", paddingTop: 8 }}
               />
 
-              {/* Field Capacity Reference Line: Sage Green (#9CAF88) */}
+              {/* Field Capacity Reference Line */}
               <ReferenceLine
                 y={soilProfile.fieldCapacity}
                 stroke="#9CAF88"
@@ -152,13 +147,13 @@ export function SoilMoistureChart({
                 strokeWidth={1.5}
                 label={{
                   value: `FC ${soilProfile.fieldCapacity.toFixed(2)}`,
-                  fill: "#9CAF88",
+                  fill: "#3D5230",
                   fontSize: 10,
                   position: "insideTopRight",
                 }}
               />
 
-              {/* Wilting Point Reference Line: Burnt Amber (#CC5500) */}
+              {/* Wilting Point Reference Line */}
               <ReferenceLine
                 y={soilProfile.wiltingPoint}
                 stroke="#CC5500"
@@ -172,33 +167,33 @@ export function SoilMoistureChart({
                 }}
               />
 
-              {/* Topsoil: Sage Green (#9CAF88) */}
+              {/* Topsoil */}
               <Area
                 type="monotone"
                 dataKey="topsoil_0_7cm"
                 name="Topsoil (0-7cm)"
                 stroke="#9CAF88"
-                fill="#242A20"
+                fill="#EBF0E6"
                 strokeWidth={1.5}
               />
 
-              {/* Active Root Zone: Concrete Grey (#A7A7A7) */}
+              {/* Active Root Zone */}
               <Area
                 type="monotone"
                 dataKey="rootzone_7_28cm"
                 name="Root Zone (7-28cm)"
-                stroke="#A7A7A7"
-                fill="#1F1F1F"
+                stroke="#707070"
+                fill="#F0EEEB"
                 strokeWidth={1.5}
               />
 
-              {/* Deep Subsoil: Burnt Amber (#CC5500) */}
+              {/* Deep Subsoil */}
               <Area
                 type="monotone"
                 dataKey="subsoil_28_100cm"
                 name="Deep Subsoil (28-100cm)"
                 stroke="#CC5500"
-                fill="#2C180E"
+                fill="#FDF1EB"
                 strokeWidth={1.5}
               />
             </AreaChart>

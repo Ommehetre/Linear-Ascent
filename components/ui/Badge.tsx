@@ -9,15 +9,15 @@ interface BadgeProps {
 
 export function Badge({ children, variant = "default", className }: BadgeProps) {
   const variantStyles: Record<string, string> = {
-    default: "bg-[#222222] text-[#A7A7A7] border-[#383838]",
-    concrete: "bg-[#222222] text-[#A7A7A7] border-[#383838]",
-    info: "bg-[#1E1E1E] text-[#A7A7A7] border-[#383838]",
-    low: "bg-[#242A20] text-[#9CAF88] border-[#9CAF88]",
-    sage: "bg-[#242A20] text-[#9CAF88] border-[#9CAF88]",
-    medium: "bg-[#2C180E] text-[#CC5500] border-[#CC5500]",
-    high: "bg-[#2C180E] text-[#CC5500] border-[#CC5500]",
-    severe: "bg-[#2C180E] text-[#CC5500] border-[#CC5500]",
-    amber: "bg-[#2C180E] text-[#CC5500] border-[#CC5500]",
+    default: "bg-[#F5F3F0] text-[#555555] border-[#D8D5D0]",
+    concrete: "bg-[#F5F3F0] text-[#555555] border-[#D8D5D0]",
+    info: "bg-[#F7F5F2] text-[#555555] border-[#D8D5D0]",
+    low: "bg-[#F1F6EE] text-[#3D5230] border-[#9CAF88]",
+    sage: "bg-[#F1F6EE] text-[#3D5230] border-[#9CAF88]",
+    medium: "bg-[#FFF6F0] text-[#963E00] border-[#CC5500]",
+    high: "bg-[#FDF1EB] text-[#CC5500] border-[#CC5500]",
+    severe: "bg-[#FDF1EB] text-[#CC5500] border-[#CC5500]",
+    amber: "bg-[#FDF1EB] text-[#CC5500] border-[#CC5500]",
   };
 
   return (

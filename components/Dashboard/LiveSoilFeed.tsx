@@ -64,12 +64,12 @@ export function LiveSoilFeed({ lat, lon }: { lat: number; lon: number }) {
   const latest = readings[0];
 
   return (
-    <div className="bg-[#1a1a1a] border border-[#2a2a2a] p-5 font-mono text-xs space-y-4 rounded-none flex flex-col justify-between">
+    <div className="bg-[#FFFFFF] border border-[#D8D5D0] p-5 font-mono text-xs space-y-4 rounded-none flex flex-col justify-between shadow-xs">
       {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-[#262626]">
+      <div className="flex items-center justify-between pb-3 border-b border-[#EFECE9]">
         <div className="flex items-center gap-2">
           <Radio className="w-4 h-4 text-[#9CAF88]" />
-          <span className="font-bold text-[#F4F4F4] uppercase tracking-wider text-[11px]">
+          <span className="font-bold text-[#1A1A1A] uppercase tracking-wider text-[11px]">
             Root-Zone Telemetry Feed
           </span>
         </div>
@@ -79,7 +79,7 @@ export function LiveSoilFeed({ lat, lon }: { lat: number; lon: number }) {
               connected ? "bg-[#9CAF88]" : "bg-[#CC5500]"
             }`}
           />
-          <span className="text-[10px] text-[#A7A7A7] uppercase">
+          <span className="text-[10px] text-[#555555] uppercase">
             {connected ? "Stream Active" : "Connecting"}
           </span>
         </div>
@@ -88,17 +88,17 @@ export function LiveSoilFeed({ lat, lon }: { lat: number; lon: number }) {
       {latest ? (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3 text-[11px]">
-            <div className="p-3 bg-[#121212] border border-[#262626] rounded-none">
-              <span className="text-[#A7A7A7] text-[10px] block uppercase font-medium">
+            <div className="p-3 bg-[#F7F5F2] border border-[#D8D5D0] rounded-none">
+              <span className="text-[#555555] text-[10px] block uppercase font-medium">
                 Topsoil Moisture (0-7cm)
               </span>
               <div className="mt-1">
                 {latest.soilMoisture_0_7 !== null ? (
                   <>
-                    <span className="text-[#9CAF88] font-bold text-lg">
+                    <span className="text-[#3D5230] font-bold text-lg">
                       {latest.soilMoisture_0_7.toFixed(3)}
                     </span>
-                    <span className="text-[10px] text-[#A7A7A7] ml-1">m³/m³</span>
+                    <span className="text-[10px] text-[#666666] ml-1">m³/m³</span>
                   </>
                 ) : (
                   <span className="text-[#707070] text-sm italic">Unavailable</span>
@@ -106,13 +106,13 @@ export function LiveSoilFeed({ lat, lon }: { lat: number; lon: number }) {
               </div>
             </div>
 
-            <div className="p-3 bg-[#121212] border border-[#262626] rounded-none">
-              <span className="text-[#A7A7A7] text-[10px] block uppercase font-medium">
+            <div className="p-3 bg-[#F7F5F2] border border-[#D8D5D0] rounded-none">
+              <span className="text-[#555555] text-[10px] block uppercase font-medium">
                 Soil Temperature
               </span>
               <div className="mt-1">
                 {latest.soilTemp_0_7 !== null ? (
-                  <span className="text-[#F4F4F4] font-bold text-lg">
+                  <span className="text-[#1A1A1A] font-bold text-lg">
                     {latest.soilTemp_0_7.toFixed(1)}°C
                   </span>
                 ) : (
@@ -123,22 +123,22 @@ export function LiveSoilFeed({ lat, lon }: { lat: number; lon: number }) {
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-[11px]">
-            <div className="p-2.5 bg-[#121212] border border-[#262626] rounded-none">
-              <span className="text-[#707070] text-[10px] block uppercase">
+            <div className="p-2.5 bg-[#F7F5F2] border border-[#D8D5D0] rounded-none">
+              <span className="text-[#666666] text-[10px] block uppercase">
                 Subsoil (7-28cm)
               </span>
-              <span className="text-[#A7A7A7] font-semibold text-sm">
+              <span className="text-[#1A1A1A] font-semibold text-sm">
                 {latest.soilMoisture_7_28 !== null
                   ? `${latest.soilMoisture_7_28.toFixed(3)} m³/m³`
                   : "Unavailable"}
               </span>
             </div>
 
-            <div className="p-2.5 bg-[#121212] border border-[#262626] rounded-none">
-              <span className="text-[#707070] text-[10px] block uppercase">
+            <div className="p-2.5 bg-[#F7F5F2] border border-[#D8D5D0] rounded-none">
+              <span className="text-[#666666] text-[10px] block uppercase">
                 Daily Evapotranspiration
               </span>
-              <span className="text-[#A7A7A7] font-semibold text-sm">
+              <span className="text-[#1A1A1A] font-semibold text-sm">
                 {latest.et0_today !== null
                   ? `${latest.et0_today.toFixed(1)} mm/day`
                   : "Unavailable"}
@@ -146,13 +146,13 @@ export function LiveSoilFeed({ lat, lon }: { lat: number; lon: number }) {
             </div>
           </div>
 
-          <div className="text-[10px] text-[#A7A7A7] flex items-center justify-between pt-1 border-t border-[#262626]">
-            <span>Station: Local Synthetic Grid</span>
+          <div className="text-[10px] text-[#555555] flex items-center justify-between pt-1 border-t border-[#EFECE9]">
+            <span>Feed: Root-Zone SSE Telemetry</span>
             <span className="text-[#707070]">{latest.ts.slice(11, 19)} UTC</span>
           </div>
         </div>
       ) : (
-        <div className="p-6 text-center text-[#A7A7A7] text-xs flex flex-col items-center justify-center gap-2">
+        <div className="p-6 text-center text-[#666666] text-xs flex flex-col items-center justify-center gap-2">
           <RefreshCw className="w-4 h-4 animate-spin text-[#9CAF88]" />
           <span>Synchronizing telemetry stream...</span>
         </div>

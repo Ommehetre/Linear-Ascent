@@ -22,6 +22,14 @@ export interface FarmLocation {
 // ---------------------------------------------------------------------------
 // Satellite / STAC
 // ---------------------------------------------------------------------------
+export interface NdviDataPoint {
+  date: string;
+  ndvi: number;
+  ndwi: number;
+  ndviStd: number;
+  cloudCover: number;
+}
+
 export interface SentinelScene {
   id: string;
   datetime: string;
@@ -29,7 +37,13 @@ export interface SentinelScene {
   visualHref: string;
   b04Href: string;
   b08Href: string;
+  b03Href?: string;
+  b11Href?: string;
   thumbnailHref: string;
+  croppedPng?: string;
+  ndvi?: number;
+  ndwi?: number;
+  ndviStd?: number;
   bbox: number[];
 }
 
@@ -157,6 +171,11 @@ export interface AgentReport {
   provenance: Record<string, DataProvenance>;
   confidence: number;
   scenes: SentinelScene[];
+  ndviSeries?: NdviDataPoint[];
+  ndviDecline?: boolean;
+  ndviAnomaly?: number;
+  isCroplandConfirmed?: boolean;
+  lulcWarning?: string;
   soilForecast: SoilForecast | null;
   soilProfile: SoilProfile | null;
   monsoonData: MonsoonData | null;

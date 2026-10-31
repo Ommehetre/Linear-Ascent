@@ -11,10 +11,21 @@ import { MandiPanel } from "@/components/Dashboard/MandiPanel";
 import { MitigationReport } from "@/components/Dashboard/MitigationReport";
 import { MonsoonChart } from "@/components/Charts/MonsoonChart";
 import { SoilMoistureChart } from "@/components/Charts/SoilMoistureChart";
+import { NdviTrendChart } from "@/components/Charts/NdviTrendChart";
 import { AgentTraceDrawer } from "@/components/Agent/AgentTraceDrawer";
 import { LiveSoilFeed } from "@/components/Dashboard/LiveSoilFeed";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { Globe2 } from "lucide-react";
+import {
+  Globe2,
+  MapPin,
+  Sprout,
+  CloudRain,
+  Layers,
+  Terminal,
+  AlertTriangle,
+  RefreshCw,
+  Cpu,
+} from "lucide-react";
 
 // Dynamically import MapLibre GL Map with ssr: false
 const TerraPulseMap = dynamic(
@@ -22,12 +33,14 @@ const TerraPulseMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-[520px] bg-[#121212] border border-[#2a2a2a] flex flex-col items-center justify-center text-[#A7A7A7] font-mono text-xs rounded-none">
+      <div className="w-full h-[520px] bg-[#FFFFFF] border border-[#D8D5D0] flex flex-col items-center justify-center text-[#666666] font-mono text-xs rounded-none">
         <LoadingSpinner label="Initializing Map Canvas..." />
       </div>
     ),
   }
 );
+
+type DashboardTab = "spatial" | "yield" | "monsoon" | "soil_mandi" | "trace";
 
 export default function TerraPulseDashboard() {
   const [selectedLocation, setSelectedLocation] = useState<FarmLocation>(
@@ -35,7 +48,7 @@ export default function TerraPulseDashboard() {
   );
   const [selectedCrop, setSelectedCrop] = useState<CropType>(FARM_PRESETS[0].crop);
   const [showBhuvanLayer, setShowBhuvanLayer] = useState(false);
-  const [isTraceOpen, setIsTraceOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<DashboardTab>("spatial");
 
   // Agent Report State
   const [report, setReport] = useState<AgentReport | null>(null);
@@ -116,47 +129,61 @@ export default function TerraPulseDashboard() {
     }
   };
 
+  const tabs: { id: DashboardTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { id: "spatial", label: "[1] Spatial & Map Monitoring", icon: MapPin },
+    { id: "yield", label: "[2] Yield & Water Model", icon: Sprout },
+    { id: "monsoon", label: "[3] Monsoon & Hydrology", icon: CloudRain },
+    { id: "soil_mandi", label: "[4] Soil & Mandi Telemetry", icon: Layers },
+    { id: "trace", label: "[5] Autonomous Agent Trace", icon: Terminal },
+  ];
+
   return (
-    <div className="min-h-screen bg-[#121212] text-[#F4F4F4] flex flex-col font-sans selection:bg-[#9CAF88] selection:text-[#121212]">
-      {/* Top Application Header - Solid Dark Opaque Surface */}
-      <header className="sticky top-0 z-40 bg-[#121212] border-b border-[#262626] px-4 lg:px-8 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-3.5">
-          <div className="w-9 h-9 bg-[#242A20] border border-[#9CAF88] flex items-center justify-center rounded-none">
-            <Globe2 className="w-5 h-5 text-[#9CAF88]" />
+    <div className="min-h-screen bg-[#EFECE9] text-[#1A1A1A] flex flex-col font-sans selection:bg-[#9CAF88] selection:text-[#FFFFFF]">
+      {/* Top Application Header - Solid Clean Light Concrete Surface */}
+      <header className="sticky top-0 z-40 bg-[#FFFFFF] border-b border-[#D8D5D0] px-4 lg:px-8 py-3 flex items-center justify-between shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-[#F1F6EE] border border-[#9CAF88] flex items-center justify-center rounded-none text-[#3D5230]">
+            <Globe2 className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-base font-bold font-mono tracking-widest text-[#F4F4F4] uppercase">
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-bold font-mono tracking-widest text-[#1A1A1A] uppercase">
                 TERRAPULSE
               </h1>
-              <span className="text-[10px] font-mono px-2 py-0.5 bg-[#242A20] text-[#9CAF88] border border-[#9CAF88] font-bold tracking-wider rounded-none">
+              <span className="text-[10px] font-mono px-2 py-0.5 bg-[#F1F6EE] text-[#3D5230] border border-[#9CAF88] font-bold tracking-wider rounded-none">
                 AGRO-INTELLIGENCE
               </span>
             </div>
-            <p className="text-[11px] font-mono text-[#A7A7A7] mt-0.5">
+            <p className="text-[11px] font-mono text-[#666666] mt-0.5">
               Micro-Climate Risk Analysis & Predictive Yield Modeling
             </p>
           </div>
         </div>
 
         {/* Minimal System Status */}
-        <div className="hidden sm:flex items-center gap-4 font-mono text-xs">
-          <div className="flex items-center gap-2 px-3 py-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-none">
+        <div className="hidden sm:flex items-center gap-3 font-mono text-xs">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-[#F7F5F2] border border-[#D8D5D0] rounded-none">
             <span className="w-2 h-2 bg-[#9CAF88] rounded-none" />
-            <span className="text-[#A7A7A7]">System Status:</span>
-            <span className="text-[#9CAF88] font-semibold">Active</span>
+            <span className="text-[#666666]">System:</span>
+            <span className="text-[#3D5230] font-semibold">Active</span>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-none">
-            <span className="text-[#A7A7A7]">Region:</span>
-            <span className="text-[#F4F4F4] font-semibold">{selectedLocation.name.split(" ")[0]}</span>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-[#F7F5F2] border border-[#D8D5D0] rounded-none">
+            <span className="text-[#666666]">Region:</span>
+            <span className="text-[#1A1A1A] font-semibold">{selectedLocation.name.split(" ")[0]}</span>
           </div>
+
+          {typeof report?.confidence === "number" && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#F7F5F2] border border-[#D8D5D0] rounded-none">
+              <span className="text-[#666666]">Confidence:</span>
+              <span className="text-[#3D5230] font-bold">{(report.confidence * 100).toFixed(0)}%</span>
+            </div>
+          )}
         </div>
       </header>
 
-      {/* Main Dashboard Workspace */}
-      <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 lg:px-8 py-6 lg:py-8 space-y-8">
-        {/* Farm Location Selector */}
+      {/* Farm Location Selector Controls (Available Across All Tabs) */}
+      <div className="max-w-[1600px] w-full mx-auto px-4 lg:px-8 pt-4">
         <LocationSelector
           selectedLocation={selectedLocation}
           onLocationChange={handleLocationChange}
@@ -165,125 +192,236 @@ export default function TerraPulseDashboard() {
           onRunEngine={() => runAgentPipeline(selectedLocation, selectedCrop)}
           loading={loading}
         />
+      </div>
 
+      {/* Tabbed Navigation Bar */}
+      <div className="sticky top-[61px] z-30 bg-[#EFECE9] border-b border-[#D8D5D0] px-4 lg:px-8 pt-4">
+        <div className="max-w-[1600px] mx-auto flex flex-wrap gap-1">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-mono font-semibold transition-colors rounded-none cursor-pointer -mb-[1px] border ${
+                  isActive
+                    ? "bg-[#FFFFFF] text-[#1A1A1A] border-t-2 border-t-[#9CAF88] border-x-[#D8D5D0] border-b-[#FFFFFF] shadow-xs z-10"
+                    : "bg-[#E4E1DC] hover:bg-[#ECE9E5] text-[#555555] hover:text-[#1A1A1A] border-transparent"
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? "text-[#3D5230]" : "text-[#707070]"}`} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Main Tab Content Area */}
+      <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
+        {/* Error / Pipeline Retry Banner */}
         {error && (
-          <div className="p-4 bg-[#2C180E] border border-[#CC5500] text-[#CC5500] font-mono text-xs flex items-center justify-between rounded-none">
-            <span>
-              <strong>Alert:</strong> {error}
+          <div className="p-4 bg-[#FDF1EB] border border-[#CC5500] text-[#CC5500] font-mono text-xs flex items-center justify-between rounded-none">
+            <span className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span><strong>Execution Alert:</strong> {error}</span>
             </span>
             <button
               onClick={() => runAgentPipeline(selectedLocation, selectedCrop)}
-              className="underline font-bold hover:text-[#F4F4F4] transition-colors"
+              className="underline font-bold hover:text-[#1A1A1A] transition-colors cursor-pointer"
             >
               Retry Pipeline
             </button>
           </div>
         )}
 
-        {/* Section 1: Spatial Telemetry (Left) + Intelligence & Mitigation (Right) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left Column: Interactive Map & Live Satellite Card (7 Cols) */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs font-mono text-[#A7A7A7] uppercase tracking-wider pb-1">
-                <span className="font-bold text-[#F4F4F4]">Spatial Monitoring</span>
-                <span>Carto GL & WMS Layers</span>
+        {/* ISRO Bhuvan LULC Cropland Verification Warning Banner */}
+        {report?.lulcWarning && (
+          <div className="p-4 bg-[#FDF1EB] border-l-4 border-l-[#CC5500] border-y border-r border-[#D8D5D0] text-[#963E00] font-mono text-xs flex items-center justify-between rounded-none shadow-xs">
+            <div className="space-y-0.5">
+              <span className="font-bold tracking-wider uppercase text-[#CC5500]">LULC Cropland Verification Warning:</span>
+              <p className="text-[#1A1A1A] text-[11px]">{report.lulcWarning}</p>
+            </div>
+            <span className="text-[10px] px-2 py-0.5 border border-[#CC5500] bg-[#FFFFFF] uppercase font-bold shrink-0 ml-4">
+              ISRO Bhuvan 1:50K
+            </span>
+          </div>
+        )}
+
+        {/* TAB 1: Spatial & Map Monitoring */}
+        {activeTab === "spatial" && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Map View (7 Cols) */}
+              <div className="lg:col-span-7 space-y-2">
+                <div className="flex items-center justify-between text-xs font-mono text-[#555555] uppercase tracking-wider pb-1">
+                  <span className="font-bold text-[#1A1A1A]">Interactive Spatial Monitoring</span>
+                  <span>Carto Positron & ISRO Bhuvan WMS</span>
+                </div>
+                <TerraPulseMap
+                  selectedLocation={selectedLocation}
+                  onLocationChange={handleLocationChange}
+                  scenes={report?.scenes ?? []}
+                  showBhuvanLayer={showBhuvanLayer}
+                  onToggleBhuvan={setShowBhuvanLayer}
+                />
               </div>
-              <TerraPulseMap
-                selectedLocation={selectedLocation}
-                onLocationChange={handleLocationChange}
-                scenes={report?.scenes ?? []}
-                showBhuvanLayer={showBhuvanLayer}
-                onToggleBhuvan={setShowBhuvanLayer}
-              />
+
+              {/* Satellite Card (5 Cols) */}
+              <div className="lg:col-span-5 space-y-2">
+                <div className="flex items-center justify-between text-xs font-mono text-[#555555] uppercase tracking-wider pb-1">
+                  <span className="font-bold text-[#1A1A1A]">Optical Surface Inspection</span>
+                  <span>10m Spatial Resolution</span>
+                </div>
+                <SatelliteCard
+                  scene={report?.scenes[0] ?? null}
+                  loading={loading}
+                />
+              </div>
             </div>
 
-            {/* Satellite Card & Live Soil Feed Side-by-Side */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <SatelliteCard
-                scene={report?.scenes[0] ?? null}
-                loading={loading}
-              />
-              <LiveSoilFeed
-                lat={selectedLocation.lat}
-                lon={selectedLocation.lon}
-              />
+            {/* Time-Series Spectral Canopy Dynamics */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono text-[#555555] uppercase tracking-wider pb-1">
+                <span className="font-bold text-[#1A1A1A]">Multi-Scene Spectral Dynamics</span>
+                <span>Sentinel-2 L2A Windowed Surface Reflectance</span>
+              </div>
+              <div className="bg-[#FFFFFF] border border-[#D8D5D0] p-5 lg:p-6 rounded-none shadow-xs">
+                <NdviTrendChart
+                  ndviSeries={report?.ndviSeries}
+                  ndviDecline={report?.ndviDecline}
+                  ndviAnomaly={report?.ndviAnomaly}
+                  loading={loading}
+                />
+              </div>
             </div>
           </div>
+        )}
 
-          {/* Right Column: FAO Yield Engine, Mandi Prices & Mitigation Action Plan (5 Cols) */}
-          <div className="lg:col-span-5 space-y-6">
-            {/* Deterministic FAO-33 Yield Panel */}
-            <YieldPanel
-              yieldOutput={report?.yieldOutput ?? null}
-              loading={loading}
-            />
-
-            {/* Live Agmarknet Mandi Panel */}
-            <MandiPanel
-              records={report?.mandiData ?? []}
-              loading={loading}
-              crop={selectedCrop}
-            />
-
-            {/* Actionable Mitigation & Logistics Plan */}
-            <MitigationReport
-              mitigation={report?.mitigation ?? null}
-              riskClassification={
-                report?.riskClassification ?? "Computing Risk Matrix..."
-              }
-              riskLevel={report?.riskLevel ?? "medium"}
-              citations={report?.citations ?? []}
-              confidence={report?.confidence}
-              loading={loading}
-              onExport={handleExport}
-              exporting={exporting}
-            />
-          </div>
-        </div>
-
-        {/* Section 2: Dual Analytical Charts (Monsoon Reanalysis + Multi-Depth Soil Moisture) */}
-        <div className="space-y-2 pt-2">
-          <div className="flex items-center justify-between text-xs font-mono text-[#A7A7A7] uppercase tracking-wider pb-1">
-            <span className="font-bold text-[#F4F4F4]">Hydrological & Soil Analytics</span>
-            <span>ERA5 & ISRIC SoilGrids Integration</span>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Chart 1: 10-Year Monsoon JJAS vs Current Forecast */}
-            <div className="bg-[#1a1a1a] border border-[#2a2a2a] p-5 lg:p-6 rounded-none">
-              <MonsoonChart
-                monsoon={report?.monsoonData ?? null}
+        {/* TAB 2: Yield & Water Model */}
+        {activeTab === "yield" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono text-[#555555] uppercase tracking-wider pb-1">
+                <span className="font-bold text-[#1A1A1A]">FAO-33 Water Production Function</span>
+                <span>Deterministic Math</span>
+              </div>
+              <YieldPanel
+                yieldOutput={report?.yieldOutput ?? null}
                 loading={loading}
               />
             </div>
 
-            {/* Chart 2: Multi-Depth Root-Zone Soil Moisture vs ISRIC Hydraulic Limits */}
-            <div className="bg-[#1a1a1a] border border-[#2a2a2a] p-5 lg:p-6 rounded-none">
-              <SoilMoistureChart
-                soilForecast={report?.soilForecast ?? null}
-                soilProfile={report?.soilProfile ?? null}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono text-[#555555] uppercase tracking-wider pb-1">
+                <span className="font-bold text-[#1A1A1A]">Autonomous Mitigation Directive</span>
+                <span>Prescriptive Advisory</span>
+              </div>
+              <MitigationReport
+                mitigation={report?.mitigation ?? null}
+                riskClassification={
+                  report?.riskClassification ?? "Computing Risk Matrix..."
+                }
+                riskLevel={report?.riskLevel ?? "medium"}
+                citations={report?.citations ?? []}
+                confidence={report?.confidence}
                 loading={loading}
+                onExport={handleExport}
+                exporting={exporting}
               />
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Section 3: Developer Telemetry Drawer (Collapsed by Default) */}
-        <div className="pt-2">
-          <AgentTraceDrawer
-            trace={report?.trace ?? []}
-            isOpen={isTraceOpen}
-            onToggle={() => setIsTraceOpen(!isTraceOpen)}
-            rawPayload={report}
-            provenance={report?.provenance}
-          />
-        </div>
+        {/* TAB 3: Monsoon & Hydrology */}
+        {activeTab === "monsoon" && (
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono text-[#555555] uppercase tracking-wider pb-1">
+                <span className="font-bold text-[#1A1A1A]">Hydrological & Monsoon Analysis</span>
+                <span>ERA5 10-Year JJAS Reanalysis & 14-Day Forecast</span>
+              </div>
+              <div className="bg-[#FFFFFF] border border-[#D8D5D0] p-5 lg:p-6 rounded-none shadow-xs">
+                <MonsoonChart
+                  monsoon={report?.monsoonData ?? null}
+                  loading={loading}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: Soil & Mandi Telemetry */}
+        {activeTab === "soil_mandi" && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Soil Moisture Chart (7 Cols) */}
+              <div className="lg:col-span-7 space-y-2">
+                <div className="flex items-center justify-between text-xs font-mono text-[#555555] uppercase tracking-wider pb-1">
+                  <span className="font-bold text-[#1A1A1A]">Root-Zone Hydraulic Strata</span>
+                  <span>ISRIC SoilGrids & ERA5 Ingestion</span>
+                </div>
+                <div className="bg-[#FFFFFF] border border-[#D8D5D0] p-5 lg:p-6 rounded-none shadow-xs">
+                  <SoilMoistureChart
+                    soilForecast={report?.soilForecast ?? null}
+                    soilProfile={report?.soilProfile ?? null}
+                    loading={loading}
+                  />
+                </div>
+              </div>
+
+              {/* Real-time SSE Soil Telemetry Feed (5 Cols) */}
+              <div className="lg:col-span-5 space-y-2">
+                <div className="flex items-center justify-between text-xs font-mono text-[#555555] uppercase tracking-wider pb-1">
+                  <span className="font-bold text-[#1A1A1A]">Real-Time Sensor Telemetry</span>
+                  <span>Continuous Stream</span>
+                </div>
+                <LiveSoilFeed
+                  lat={selectedLocation.lat}
+                  lon={selectedLocation.lon}
+                />
+              </div>
+            </div>
+
+            {/* Mandi Panel */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono text-[#555555] uppercase tracking-wider pb-1">
+                <span className="font-bold text-[#1A1A1A]">Commodity Market Arbitrage</span>
+                <span>Data.gov.in Agmarknet Wholesale Records</span>
+              </div>
+              <MandiPanel
+                records={report?.mandiData ?? []}
+                loading={loading}
+                crop={selectedCrop}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: Autonomous Agent Trace */}
+        {activeTab === "trace" && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs font-mono text-[#555555] uppercase tracking-wider pb-1">
+              <span className="font-bold text-[#1A1A1A]">Autonomous Agent Telemetry</span>
+              <span>4-Node Multi-Agent DAG Logs</span>
+            </div>
+            <AgentTraceDrawer
+              trace={report?.trace ?? []}
+              isOpen={true}
+              onToggle={() => {}}
+              rawPayload={report}
+              provenance={report?.provenance}
+            />
+          </div>
+        )}
       </main>
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-[#262626] bg-[#121212] px-6 py-4 text-center font-mono text-[11px] text-[#707070]">
-        TerraPulse — Autonomous Micro-Climate & Crop Yield Intelligence Engine
+      <footer className="mt-auto border-t border-[#D8D5D0] bg-[#FFFFFF] px-6 py-4 text-center font-mono text-[11px] text-[#707070]">
+        TerraPulse — Autonomous Micro-Climate & Crop Yield Intelligence Engine · Strictly Zero Dummy Data
       </footer>
     </div>
   );

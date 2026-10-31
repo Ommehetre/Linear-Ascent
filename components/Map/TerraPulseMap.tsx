@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import * as maplibregl from "maplibre-gl";
 import Map, {
   Marker,
   Popup,
@@ -14,8 +15,25 @@ import type { FarmLocation, SentinelScene } from "@/types";
 import { FARM_PRESETS, BHUVAN_LULC_LAYERS } from "@/lib/constants";
 import { Layers, MapPin, Eye } from "lucide-react";
 
+// Turbopack / Next.js compliant Web Worker instantiation
+// Ensures MapLibre background worker resolves without "Worker failed to load"
+if (typeof window !== "undefined") {
+  try {
+    // Next.js Turbopack-compliant Web Worker instantiation pattern
+    const mapWorker = new Worker(
+      new URL("./mapWorker.ts", import.meta.url),
+      { type: "module" }
+    );
+    // Bind worker URL to maplibre-gl configuration
+    maplibregl.setWorkerUrl("/workers/maplibre-gl-worker.js");
+  } catch {
+    maplibregl.setWorkerUrl("/workers/maplibre-gl-worker.js");
+  }
+}
+
+// Carto Positron provides the clean light concrete aesthetic
 const MAP_STYLE =
-  "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+  "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
 interface TerraPulseMapProps {
   selectedLocation: FarmLocation;
@@ -71,16 +89,16 @@ export default function TerraPulseMap({
     BHUVAN_LULC_LAYERS[selectedLocation.state] || BHUVAN_LULC_LAYERS["Default"];
 
   return (
-    <div className="relative w-full h-[520px] overflow-hidden border border-[#2a2a2a] bg-[#121212] rounded-none">
-      {/* Top Map Toolbar Controls - Solid Opaque Surfaces */}
-      <div className="absolute top-3 left-3 z-10 flex items-center gap-2 bg-[#1a1a1a] p-1.5 border border-[#2a2a2a] rounded-none">
+    <div className="relative w-full h-[520px] overflow-hidden border border-[#D8D5D0] bg-[#EFECE9] rounded-none shadow-xs">
+      {/* Top Map Toolbar Controls */}
+      <div className="absolute top-3 left-3 z-10 flex items-center gap-2 bg-[#FFFFFF] p-1.5 border border-[#D8D5D0] rounded-none shadow-xs">
         <button
           type="button"
           onClick={() => onToggleBhuvan(!showBhuvanLayer)}
-          className={`flex items-center gap-1.5 text-xs font-mono font-medium px-3 py-1.5 transition-colors rounded-none ${
+          className={`flex items-center gap-1.5 text-xs font-mono font-medium px-3 py-1.5 transition-colors rounded-none cursor-pointer ${
             showBhuvanLayer
-              ? "bg-[#9CAF88] text-[#121212] font-bold"
-              : "bg-[#121212] text-[#A7A7A7] hover:text-[#F4F4F4] border border-[#2a2a2a]"
+              ? "bg-[#9CAF88] text-[#FFFFFF] font-bold border border-[#9CAF88]"
+              : "bg-[#F5F3F0] text-[#555555] hover:text-[#1A1A1A] border border-[#D8D5D0]"
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
@@ -91,20 +109,21 @@ export default function TerraPulseMap({
           <button
             type="button"
             onClick={() => setActivePopup(scenes[0])}
-            className="flex items-center gap-1.5 text-xs font-mono font-medium px-3 py-1.5 bg-[#121212] text-[#A7A7A7] hover:text-[#9CAF88] border border-[#2a2a2a] transition-colors rounded-none"
+            className="flex items-center gap-1.5 text-xs font-mono font-medium px-3 py-1.5 bg-[#F5F3F0] text-[#555555] hover:text-[#1A1A1A] border border-[#D8D5D0] transition-colors rounded-none cursor-pointer"
           >
-            <Eye className="w-3.5 h-3.5 text-[#9CAF88]" />
+            <Eye className="w-3.5 h-3.5 text-[#3D5230]" />
             <span>Scene Details</span>
           </button>
         )}
       </div>
 
       {/* Coordinate Chip */}
-      <div className="absolute top-3 right-14 z-10 bg-[#1a1a1a] px-3 py-1.5 border border-[#2a2a2a] text-[11px] font-mono text-[#A7A7A7] rounded-none">
+      <div className="absolute top-3 right-14 z-10 bg-[#FFFFFF] px-3 py-1.5 border border-[#D8D5D0] text-[11px] font-mono text-[#1A1A1A] font-semibold rounded-none shadow-xs">
         {selectedLocation.lat.toFixed(3)}°N, {selectedLocation.lon.toFixed(3)}°E
       </div>
 
       <Map
+        mapLib={maplibregl}
         {...viewState}
         onMove={(evt) => setViewState(evt.viewState)}
         onClick={handleMapClick}
@@ -153,13 +172,13 @@ export default function TerraPulseMap({
                 <div
                   className={`w-7 h-7 flex items-center justify-center transition-colors rounded-none ${
                     isSelected
-                      ? "bg-[#9CAF88] text-[#121212] border-2 border-[#121212]"
-                      : "bg-[#1a1a1a] text-[#9CAF88] border border-[#2a2a2a] hover:border-[#9CAF88]"
+                      ? "bg-[#9CAF88] text-[#FFFFFF] border-2 border-[#FFFFFF] shadow-sm"
+                      : "bg-[#FFFFFF] text-[#4E653E] border border-[#D8D5D0] hover:border-[#9CAF88]"
                   }`}
                 >
                   <MapPin className="w-4 h-4" />
                 </div>
-                <span className="text-[10px] font-mono font-medium bg-[#121212] text-[#E6E6E6] px-1.5 py-0.5 border border-[#2a2a2a] mt-1 whitespace-nowrap rounded-none">
+                <span className="text-[10px] font-mono font-medium bg-[#FFFFFF] text-[#1A1A1A] px-1.5 py-0.5 border border-[#D8D5D0] mt-1 whitespace-nowrap rounded-none shadow-xs">
                   {preset.name.split(" ")[0]}
                 </span>
               </div>
@@ -179,10 +198,10 @@ export default function TerraPulseMap({
             anchor="bottom"
           >
             <div className="flex flex-col items-center">
-              <div className="w-7 h-7 bg-[#CC5500] text-[#121212] border-2 border-[#121212] flex items-center justify-center rounded-none">
+              <div className="w-7 h-7 bg-[#CC5500] text-[#FFFFFF] border-2 border-[#FFFFFF] flex items-center justify-center rounded-none shadow-sm">
                 <MapPin className="w-4 h-4" />
               </div>
-              <span className="text-[10px] font-mono font-medium bg-[#121212] text-[#CC5500] px-1.5 py-0.5 border border-[#CC5500] mt-1 rounded-none">
+              <span className="text-[10px] font-mono font-medium bg-[#FFFFFF] text-[#CC5500] px-1.5 py-0.5 border border-[#CC5500] mt-1 rounded-none shadow-xs">
                 Custom Point
               </span>
             </div>
@@ -199,12 +218,12 @@ export default function TerraPulseMap({
             closeButton={true}
             closeOnClick={false}
           >
-            <div className="p-2 text-[#E6E6E6] max-w-xs font-mono text-xs">
-              <div className="flex items-center justify-between pb-1.5 border-b border-[#2a2a2a] mb-2">
-                <span className="font-bold text-[#9CAF88] text-[11px] uppercase">
+            <div className="p-2 text-[#1A1A1A] max-w-xs font-mono text-xs">
+              <div className="flex items-center justify-between pb-1.5 border-b border-[#EFECE9] mb-2">
+                <span className="font-bold text-[#3D5230] text-[11px] uppercase">
                   Sentinel-2 L2A Asset
                 </span>
-                <span className="text-[10px] bg-[#242A20] text-[#9CAF88] border border-[#9CAF88] px-1.5 py-0.2 rounded-none">
+                <span className="text-[10px] bg-[#F1F6EE] text-[#3D5230] border border-[#9CAF88] px-1.5 py-0.5 rounded-none font-bold">
                   {activePopup.cloudCover.toFixed(1)}% Cloud
                 </span>
               </div>
@@ -212,17 +231,17 @@ export default function TerraPulseMap({
                 <img
                   src={activePopup.thumbnailHref}
                   alt="Sentinel-2 Optical Preview"
-                  className="w-full h-32 object-cover border border-[#2a2a2a] mb-2 rounded-none"
+                  className="w-full h-32 object-cover border border-[#D8D5D0] mb-2 rounded-none"
                 />
               )}
-              <div className="text-[10px] space-y-1 text-[#A7A7A7]">
+              <div className="text-[10px] space-y-1 text-[#555555]">
                 <p className="truncate">
-                  <span className="text-[#F4F4F4]">ID:</span> {activePopup.id}
+                  <span className="text-[#1A1A1A] font-semibold">ID:</span> {activePopup.id}
                 </p>
                 <p>
-                  <span className="text-[#F4F4F4]">Acquired:</span> {activePopup.datetime.replace("T", " ").slice(0, 19)} UTC
+                  <span className="text-[#1A1A1A] font-semibold">Acquired:</span> {activePopup.datetime.replace("T", " ").slice(0, 19)} UTC
                 </p>
-                <p className="text-[#707070] pt-1 border-t border-[#262626]">
+                <p className="text-[#707070] pt-1 border-t border-[#EFECE9]">
                   Spectral bands Red (B04) and NIR (B08) verified active.
                 </p>
               </div>

@@ -25,7 +25,7 @@ interface MonsoonChartProps {
 export function MonsoonChart({ monsoon, loading }: MonsoonChartProps) {
   if (loading || !monsoon) {
     return (
-      <div className="w-full h-80 flex flex-col items-center justify-center bg-[#1a1a1a] border border-[#2a2a2a] text-[#A7A7A7] font-mono text-xs space-y-3 rounded-none">
+      <div className="w-full h-80 flex flex-col items-center justify-center bg-[#FFFFFF] border border-[#D8D5D0] text-[#666666] font-mono text-xs space-y-3 rounded-none">
         <CloudRain className="w-7 h-7 text-[#9CAF88] animate-pulse" />
         <span>Synchronizing 10-year monsoon hydrological baseline...</span>
       </div>
@@ -50,27 +50,27 @@ export function MonsoonChart({ monsoon, loading }: MonsoonChartProps) {
   const isDroughtSpei = monsoon.spei < -1;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Top Header Metrics Row */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-[#121212] border border-[#262626] rounded-none">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-[#F7F5F2] border border-[#D8D5D0] rounded-none">
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4 text-[#9CAF88]" />
-          <span className="text-xs font-mono text-[#F4F4F4] font-semibold uppercase tracking-wider">
+          <span className="text-xs font-mono text-[#1A1A1A] font-semibold uppercase tracking-wider">
             Hydrology & Monsoon Dynamics
           </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 text-xs font-mono">
-          <div className="flex items-center gap-1.5 bg-[#1a1a1a] px-2.5 py-1 border border-[#2a2a2a] rounded-none">
-            <span className="text-[#A7A7A7]">10-Yr LPA:</span>
-            <span className="font-bold text-[#F4F4F4]">{monsoon.lpa_mm.toFixed(1)} mm</span>
+          <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-2.5 py-1 border border-[#D8D5D0] rounded-none">
+            <span className="text-[#555555]">10-Yr LPA:</span>
+            <span className="font-bold text-[#1A1A1A]">{monsoon.lpa_mm.toFixed(1)} mm</span>
           </div>
 
           <div
             className={`flex items-center gap-1.5 px-2.5 py-1 border font-bold rounded-none ${
               isDeficit
-                ? "bg-[#2C180E] text-[#CC5500] border-[#CC5500]"
-                : "bg-[#242A20] text-[#9CAF88] border-[#9CAF88]"
+                ? "bg-[#FDF1EB] text-[#CC5500] border-[#CC5500]"
+                : "bg-[#F1F6EE] text-[#3D5230] border-[#9CAF88]"
             }`}
           >
             <span>Deviation:</span>
@@ -83,8 +83,8 @@ export function MonsoonChart({ monsoon, loading }: MonsoonChartProps) {
           <div
             className={`flex items-center gap-1.5 px-2.5 py-1 border font-bold rounded-none ${
               isDroughtSpei
-                ? "bg-[#2C180E] text-[#CC5500] border-[#CC5500]"
-                : "bg-[#1a1a1a] text-[#A7A7A7] border-[#2a2a2a]"
+                ? "bg-[#FDF1EB] text-[#CC5500] border-[#CC5500]"
+                : "bg-[#FFFFFF] text-[#555555] border-[#D8D5D0]"
             }`}
           >
             <span>SPEI:</span>
@@ -94,9 +94,9 @@ export function MonsoonChart({ monsoon, loading }: MonsoonChartProps) {
       </div>
 
       {/* Chart 1: 10-Year Historical JJAS Monsoon vs LPA Baseline */}
-      <div className="w-full bg-[#121212] p-4 border border-[#262626] rounded-none">
-        <div className="flex justify-between items-center text-[11px] font-mono text-[#A7A7A7] mb-3 px-1">
-          <span className="font-semibold uppercase text-[#E6E6E6]">
+      <div className="w-full bg-[#FFFFFF] p-4 border border-[#D8D5D0] rounded-none">
+        <div className="flex justify-between items-center text-[11px] font-mono text-[#555555] mb-3 px-1">
+          <span className="font-semibold uppercase text-[#1A1A1A]">
             10-Year Historical Monsoon (JJAS Total) vs LPA
           </span>
           <span className="text-[#707070]">Rainfall (mm)</span>
@@ -107,28 +107,28 @@ export function MonsoonChart({ monsoon, loading }: MonsoonChartProps) {
               data={historicalData}
               margin={{ top: 10, right: 15, bottom: 5, left: -10 }}
             >
-              <CartesianGrid stroke="#262626" strokeDasharray="2 2" vertical={false} />
+              <CartesianGrid stroke="#EFECE9" strokeDasharray="2 2" vertical={false} />
               <XAxis
                 dataKey="year"
-                stroke="#5E5E5E"
-                tick={{ fill: "#A7A7A7", fontSize: 11, fontFamily: "monospace" }}
-                axisLine={{ stroke: "#2e2e2e" }}
+                stroke="#666666"
+                tick={{ fill: "#666666", fontSize: 11, fontFamily: "monospace" }}
+                axisLine={{ stroke: "#D8D5D0" }}
                 tickLine={false}
               />
               <YAxis
-                stroke="#5E5E5E"
-                tick={{ fill: "#A7A7A7", fontSize: 10, fontFamily: "monospace" }}
+                stroke="#666666"
+                tick={{ fill: "#666666", fontSize: 10, fontFamily: "monospace" }}
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#1a1a1a",
-                  borderColor: "#2e2e2e",
+                  backgroundColor: "#FFFFFF",
+                  borderColor: "#D8D5D0",
                   borderRadius: 0,
                   fontSize: 11,
                   fontFamily: "monospace",
-                  color: "#F4F4F4",
+                  color: "#1A1A1A",
                 }}
               />
               <Legend
@@ -136,12 +136,12 @@ export function MonsoonChart({ monsoon, loading }: MonsoonChartProps) {
               />
               <ReferenceLine
                 y={monsoon.lpa_mm}
-                stroke="#A7A7A7"
+                stroke="#666666"
                 strokeDasharray="4 4"
                 strokeWidth={1.5}
                 label={{
                   value: `LPA ${monsoon.lpa_mm.toFixed(0)}mm`,
-                  fill: "#A7A7A7",
+                  fill: "#666666",
                   fontSize: 10,
                   position: "insideTopRight",
                 }}
@@ -159,9 +159,9 @@ export function MonsoonChart({ monsoon, loading }: MonsoonChartProps) {
       </div>
 
       {/* Chart 2: 14-Day Micro-Climate Rainfall vs Evapotranspiration */}
-      <div className="w-full bg-[#121212] p-4 border border-[#262626] rounded-none">
-        <div className="flex justify-between items-center text-[11px] font-mono text-[#A7A7A7] mb-3 px-1">
-          <span className="font-semibold uppercase text-[#E6E6E6]">
+      <div className="w-full bg-[#FFFFFF] p-4 border border-[#D8D5D0] rounded-none">
+        <div className="flex justify-between items-center text-[11px] font-mono text-[#555555] mb-3 px-1">
+          <span className="font-semibold uppercase text-[#1A1A1A]">
             14-Day Precipitation vs Atmospheric Demand (ET₀)
           </span>
           <span className="text-[#707070]">mm / day</span>
@@ -172,28 +172,28 @@ export function MonsoonChart({ monsoon, loading }: MonsoonChartProps) {
               data={forecastData}
               margin={{ top: 10, right: 15, bottom: 5, left: -10 }}
             >
-              <CartesianGrid stroke="#262626" strokeDasharray="2 2" vertical={false} />
+              <CartesianGrid stroke="#EFECE9" strokeDasharray="2 2" vertical={false} />
               <XAxis
                 dataKey="date"
-                stroke="#5E5E5E"
-                tick={{ fill: "#A7A7A7", fontSize: 10, fontFamily: "monospace" }}
-                axisLine={{ stroke: "#2e2e2e" }}
+                stroke="#666666"
+                tick={{ fill: "#666666", fontSize: 10, fontFamily: "monospace" }}
+                axisLine={{ stroke: "#D8D5D0" }}
                 tickLine={false}
               />
               <YAxis
-                stroke="#5E5E5E"
-                tick={{ fill: "#A7A7A7", fontSize: 10, fontFamily: "monospace" }}
+                stroke="#666666"
+                tick={{ fill: "#666666", fontSize: 10, fontFamily: "monospace" }}
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#1a1a1a",
-                  borderColor: "#2e2e2e",
+                  backgroundColor: "#FFFFFF",
+                  borderColor: "#D8D5D0",
                   borderRadius: 0,
                   fontSize: 11,
                   fontFamily: "monospace",
-                  color: "#F4F4F4",
+                  color: "#1A1A1A",
                 }}
               />
               <Legend
@@ -204,7 +204,7 @@ export function MonsoonChart({ monsoon, loading }: MonsoonChartProps) {
                 dataKey="precip_mm"
                 name="Rainfall (mm)"
                 stroke="#9CAF88"
-                fill="#242A20"
+                fill="#EBF0E6"
                 strokeWidth={1.5}
               />
               <Area
@@ -212,7 +212,7 @@ export function MonsoonChart({ monsoon, loading }: MonsoonChartProps) {
                 dataKey="et0_mm"
                 name="ET₀ Water Demand (mm)"
                 stroke="#CC5500"
-                fill="#2C180E"
+                fill="#FDF1EB"
                 strokeWidth={1.5}
               />
             </AreaChart>

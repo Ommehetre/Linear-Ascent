@@ -6,15 +6,15 @@ export function ApiStatusBadge({ call }: { call: ApiCallRecord }) {
   const is2xx = call.statusCode >= 200 && call.statusCode < 300;
 
   const statusBadge = is2xx
-    ? "bg-[#242A20] text-[#9CAF88] border-[#9CAF88]"
-    : "bg-[#2C180E] text-[#CC5500] border-[#CC5500]";
+    ? "bg-[#F1F6EE] text-[#3D5230] border-[#9CAF88]"
+    : "bg-[#FDF1EB] text-[#CC5500] border-[#CC5500]";
 
   return (
-    <div className="flex items-center justify-between text-xs font-mono bg-[#121212] border border-[#2a2a2a] px-3 py-1.5 rounded-none">
+    <div className="flex items-center justify-between text-xs font-mono bg-[#FFFFFF] border border-[#D8D5D0] px-3 py-1.5 rounded-none">
       <div className="flex items-center gap-2 overflow-hidden mr-3">
-        <span className="font-bold text-[#A7A7A7] shrink-0">[{call.method}]</span>
+        <span className="font-bold text-[#555555] shrink-0">[{call.method}]</span>
         <span
-          className="text-[#E6E6E6] truncate font-mono text-[11px]"
+          className="text-[#1A1A1A] truncate font-mono text-[11px]"
           title={call.url}
         >
           {truncateUrl(call.url, 48)}
@@ -26,7 +26,7 @@ export function ApiStatusBadge({ call }: { call: ApiCallRecord }) {
         >
           {call.statusCode === 0 ? "TIMEOUT" : `HTTP ${call.statusCode}`}
         </span>
-        <span className="text-[#A7A7A7] text-[10px] min-w-[42px] text-right">
+        <span className="text-[#707070] text-[10px] min-w-[42px] text-right">
           {call.latencyMs}ms
         </span>
       </div>

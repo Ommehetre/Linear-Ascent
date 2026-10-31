@@ -39,7 +39,7 @@ export function LocationSelector({
     const lon = parseFloat(customLon);
     if (!isNaN(lat) && !isNaN(lon)) {
       onLocationChange({
-        name: `Coordinate (${lat.toFixed(3)}°N, ${lon.toFixed(3)}°E)`,
+        name: `Custom (${lat.toFixed(3)}°N, ${lon.toFixed(3)}°E)`,
         lat,
         lon,
         bbox: [lon - 0.15, lat - 0.15, lon + 0.15, lat + 0.15],
@@ -50,11 +50,11 @@ export function LocationSelector({
   };
 
   return (
-    <div className="w-full bg-[#1a1a1a] border border-[#2a2a2a] p-5 lg:p-6 font-mono text-xs space-y-4 rounded-none">
+    <div className="w-full bg-[#FFFFFF] border border-[#D8D5D0] p-4 lg:p-5 font-mono text-xs space-y-3.5 rounded-none shadow-xs">
       {/* Top Bar: Farm Presets & High-Priority Trigger */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <span className="text-[#A7A7A7] font-bold uppercase text-[11px] flex items-center gap-1.5 mr-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[#555555] font-bold uppercase text-[11px] flex items-center gap-1.5 mr-1">
             <Compass className="w-4 h-4 text-[#9CAF88]" />
             Target Region Presets:
           </span>
@@ -74,13 +74,13 @@ export function LocationSelector({
                 }}
                 className={`px-3 py-1.5 border font-semibold text-xs transition-colors rounded-none flex items-center gap-1.5 ${
                   isSelected
-                    ? "bg-[#9CAF88] border-[#9CAF88] text-[#121212]"
-                    : "bg-[#121212] border-[#2a2a2a] text-[#A7A7A7] hover:border-[#A7A7A7] hover:text-[#F4F4F4]"
+                    ? "bg-[#9CAF88] border-[#9CAF88] text-[#FFFFFF]"
+                    : "bg-[#F5F3F0] border-[#D8D5D0] text-[#555555] hover:border-[#9CAF88] hover:text-[#1A1A1A]"
                 }`}
               >
-                <MapPin className={`w-3.5 h-3.5 ${isSelected ? "text-[#121212]" : "text-[#9CAF88]"}`} />
+                <MapPin className={`w-3.5 h-3.5 ${isSelected ? "text-[#FFFFFF]" : "text-[#9CAF88]"}`} />
                 <span>{preset.name}</span>
-                <span className={`text-[10px] ${isSelected ? "text-[#242A20]" : "text-[#707070]"}`}>
+                <span className={`text-[10px] ${isSelected ? "text-[#EBF0E6]" : "text-[#707070]"}`}>
                   ({preset.crop})
                 </span>
               </button>
@@ -93,11 +93,11 @@ export function LocationSelector({
           type="button"
           onClick={onRunEngine}
           disabled={loading}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#CC5500] hover:bg-[#B84C00] disabled:opacity-50 text-[#F4F4F4] font-bold text-xs tracking-wider transition-colors rounded-none"
+          className="flex items-center gap-2 px-5 py-2.5 bg-[#CC5500] hover:bg-[#B84C00] disabled:opacity-50 text-[#FFFFFF] font-bold text-xs tracking-wider transition-colors rounded-none cursor-pointer"
         >
           {loading ? (
             <>
-              <RefreshCw className="w-4 h-4 animate-spin text-[#F4F4F4]" />
+              <RefreshCw className="w-4 h-4 animate-spin text-[#FFFFFF]" />
               <span>ORCHESTRATING PIPELINE...</span>
             </>
           ) : (
@@ -110,18 +110,18 @@ export function LocationSelector({
       </div>
 
       {/* Bottom Sub-bar: Coordinate Manual Inputs & Crop Dropdown */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-[#262626] text-[11px]">
+      <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-[#EFECE9] text-[11px]">
         <form
           onSubmit={handleApplyCoordinates}
-          className="flex flex-wrap items-center gap-2 text-[#A7A7A7]"
+          className="flex flex-wrap items-center gap-2 text-[#555555]"
         >
-          <span className="font-medium">Coordinates:</span>
+          <span className="font-semibold text-[#1A1A1A]">Manual Coordinates:</span>
           <input
             type="number"
             step="0.0001"
             value={customLat}
             onChange={(e) => setCustomLat(e.target.value)}
-            className="w-24 px-2.5 py-1 bg-[#121212] border border-[#2a2a2a] text-[#F4F4F4] font-mono focus:border-[#9CAF88] focus:outline-none rounded-none"
+            className="w-24 px-2.5 py-1 bg-[#F7F5F2] border border-[#D8D5D0] text-[#1A1A1A] font-mono focus:border-[#9CAF88] focus:outline-none rounded-none"
             placeholder="Latitude"
           />
           <span className="text-[#707070]">°N</span>
@@ -130,27 +130,27 @@ export function LocationSelector({
             step="0.0001"
             value={customLon}
             onChange={(e) => setCustomLon(e.target.value)}
-            className="w-24 px-2.5 py-1 bg-[#121212] border border-[#2a2a2a] text-[#F4F4F4] font-mono focus:border-[#9CAF88] focus:outline-none rounded-none"
+            className="w-24 px-2.5 py-1 bg-[#F7F5F2] border border-[#D8D5D0] text-[#1A1A1A] font-mono focus:border-[#9CAF88] focus:outline-none rounded-none"
             placeholder="Longitude"
           />
           <span className="text-[#707070]">°E</span>
           <button
             type="submit"
-            className="px-3 py-1 bg-[#222222] hover:bg-[#2a2a2a] text-[#E6E6E6] font-medium border border-[#383838] transition-colors rounded-none"
+            className="px-3 py-1 bg-[#EFECE9] hover:bg-[#E4E3DF] text-[#1A1A1A] font-medium border border-[#D8D5D0] transition-colors rounded-none cursor-pointer"
           >
             Apply
           </button>
         </form>
 
         <div className="flex items-center gap-2.5">
-          <span className="text-[#A7A7A7]">Target Crop:</span>
+          <span className="text-[#555555] font-semibold">Target Crop:</span>
           <select
             value={selectedCrop}
             onChange={(e) => onCropChange(e.target.value as CropType)}
-            className="px-3 py-1 bg-[#121212] border border-[#2a2a2a] text-[#9CAF88] font-bold focus:border-[#9CAF88] focus:outline-none cursor-pointer rounded-none"
+            className="px-3 py-1 bg-[#F7F5F2] border border-[#D8D5D0] text-[#4E653E] font-bold focus:border-[#9CAF88] focus:outline-none cursor-pointer rounded-none"
           >
             {CROPS.map((c) => (
-              <option key={c} value={c} className="bg-[#1a1a1a] text-[#F4F4F4]">
+              <option key={c} value={c} className="bg-[#FFFFFF] text-[#1A1A1A]">
                 {c}
               </option>
             ))}

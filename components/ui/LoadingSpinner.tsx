@@ -9,12 +9,12 @@ export function LoadingSpinner({
 }) {
   const sizeMap = { sm: "w-4 h-4", md: "w-5 h-5", lg: "w-7 h-7" };
   return (
-    <div className="flex flex-col items-center justify-center p-6 space-y-3 text-[#A7A7A7]">
+    <div className="flex flex-col items-center justify-center p-6 space-y-3 text-[#555555]">
       <div
-        className={`${sizeMap[size]} border-2 border-[#2e2e2e] border-t-[#9CAF88] animate-spin`}
+        className={`${sizeMap[size]} border-2 border-[#D8D5D0] border-t-[#9CAF88] animate-spin`}
       />
       {label && (
-        <span className="text-[11px] font-mono tracking-wider text-[#A7A7A7] uppercase">
+        <span className="text-[11px] font-mono tracking-wider text-[#666666] uppercase font-semibold">
           {label}
         </span>
       )}
