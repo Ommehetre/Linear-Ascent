@@ -30,19 +30,19 @@ export function NdviTrendChart({
 }: NdviTrendChartProps) {
   if (loading) {
     return (
-      <div className="w-full h-80 flex flex-col items-center justify-center bg-[#FFFFFF] border border-[#D8D5D0] text-[#666666] font-mono text-xs space-y-3 rounded-none">
+      <div className="w-full h-80 flex flex-col items-center justify-center bg-[#FFFFFF] border border-[#B5B0A6] text-[#5A5752] font-sans text-xs space-y-3 rounded-sm shadow-xs">
         <Activity className="w-7 h-7 text-[#9CAF88] animate-pulse" />
-        <span>Extracting multi-scene Sentinel-2 spectral indices...</span>
+        <span className="font-semibold uppercase tracking-wider text-[11px]">Extracting multi-scene Sentinel-2 spectral indices...</span>
       </div>
     );
   }
 
   if (!ndviSeries || ndviSeries.length === 0) {
     return (
-      <div className="w-full h-80 flex flex-col items-center justify-center bg-[#FFFFFF] border border-[#D8D5D0] text-[#666666] font-mono text-xs space-y-2 rounded-none p-6 text-center">
-        <Activity className="w-6 h-6 text-[#707070]" />
-        <span className="font-semibold text-[#1A1A1A]">Spectral Time Series Unavailable</span>
-        <span className="max-w-md text-[#666666]">
+      <div className="w-full h-80 flex flex-col items-center justify-center bg-[#FFFFFF] border border-[#B5B0A6] text-[#5A5752] font-sans text-xs space-y-2 rounded-sm p-6 text-center shadow-xs">
+        <Activity className="w-6 h-6 text-[#6E6A63]" />
+        <span className="font-bold text-[#141414] uppercase tracking-wider">Spectral Time Series Unavailable</span>
+        <span className="max-w-md text-[#5A5752] leading-relaxed">
           Cloud-free Sentinel-2 scenes for this bounding box did not contain sufficient optical surface reflectance. Zero synthetic data generated.
         </span>
       </div>
@@ -64,34 +64,34 @@ export function NdviTrendChart({
   return (
     <div className="space-y-4">
       {/* Top Stat Badges Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-[#F7F5F2] border border-[#D8D5D0] rounded-none">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-[#F4F1EA] border border-[#CDC9BF] rounded-sm">
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4 text-[#9CAF88]" />
-          <span className="text-xs font-mono text-[#1A1A1A] font-semibold uppercase tracking-wider">
+          <span className="font-sans text-xs text-[#141414] font-bold uppercase tracking-wider">
             Sentinel-2 Spectral Dynamics ({ndviSeries.length} Scenes)
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
-          <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-2.5 py-1 border border-[#D8D5D0] rounded-none">
-            <span className="text-[#555555]">Latest NDVI:</span>
-            <span className="font-bold text-[#3D5230]">{latest.ndvi.toFixed(3)}</span>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-2.5 py-1 border border-[#CDC9BF] rounded-sm">
+            <span className="font-sans text-[11px] text-[#5A5752]">Latest NDVI:</span>
+            <span className="font-mono font-bold text-[#3D5230]">{latest.ndvi.toFixed(3)}</span>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-2.5 py-1 border border-[#D8D5D0] rounded-none">
-            <span className="text-[#555555]">Latest NDWI:</span>
-            <span className="font-bold text-[#555555]">{latest.ndwi.toFixed(3)}</span>
+          <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-2.5 py-1 border border-[#CDC9BF] rounded-sm">
+            <span className="font-sans text-[11px] text-[#5A5752]">Latest NDWI:</span>
+            <span className="font-mono font-bold text-[#403E3A]">{latest.ndwi.toFixed(3)}</span>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-2.5 py-1 border border-[#D8D5D0] rounded-none">
-            <span className="text-[#555555]">Plot Std Dev:</span>
-            <span className="font-bold text-[#1A1A1A]">±{latest.ndviStd.toFixed(3)}</span>
+          <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-2.5 py-1 border border-[#CDC9BF] rounded-sm">
+            <span className="font-sans text-[11px] text-[#5A5752]">Plot Std Dev:</span>
+            <span className="font-mono font-bold text-[#141414]">±{latest.ndviStd.toFixed(3)}</span>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-2.5 py-1 border border-[#D8D5D0] rounded-none">
-            <span className="text-[#555555]">Trend Anomaly:</span>
+          <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-2.5 py-1 border border-[#CDC9BF] rounded-sm">
+            <span className="font-sans text-[11px] text-[#5A5752]">Trend Anomaly:</span>
             <span
-              className={`font-bold flex items-center gap-1 ${
+              className={`font-mono font-bold flex items-center gap-1 ${
                 anomaly < -0.05 ? "text-[#CC5500]" : "text-[#3D5230]"
               }`}
             >
@@ -108,7 +108,7 @@ export function NdviTrendChart({
 
       {/* Critical Canopy Decline Warning Strip */}
       {ndviDecline && (
-        <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-[#FDF1EB] border-l-2 border-l-[#CC5500] border-y border-r border-[#D8D5D0] text-xs font-mono text-[#CC5500]">
+        <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-[#FDF1EB] border-l-2 border-l-[#CC5500] border-y border-r border-[#CDC9BF] text-xs font-mono text-[#CC5500] rounded-sm">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           <span>
             VEGETATION ANOMALY: Rapid canopy decline detected (&gt;0.1 NDVI decrease across time series). Indicates acute moisture stress or senescent leaf browning.
@@ -117,47 +117,47 @@ export function NdviTrendChart({
       )}
 
       {/* Recharts Line Visualization */}
-      <div className="w-full h-72 bg-[#FFFFFF] border border-[#D8D5D0] p-4 rounded-none">
+      <div className="w-full h-72 bg-[#FFFFFF] border border-[#B5B0A6] p-4 rounded-sm shadow-xs">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#EFECE9" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#E2DFD7" />
             <XAxis
               dataKey="date"
-              stroke="#666666"
-              tick={{ fill: "#666666", fontSize: 11, fontFamily: "monospace" }}
-              tickLine={{ stroke: "#D8D5D0" }}
+              stroke="#6E6A63"
+              tick={{ fill: "#6E6A63", fontSize: 10, fontFamily: "monospace" }}
+              tickLine={{ stroke: "#CDC9BF" }}
             />
             <YAxis
               domain={[-0.8, 1.0]}
-              stroke="#666666"
-              tick={{ fill: "#666666", fontSize: 11, fontFamily: "monospace" }}
-              tickLine={{ stroke: "#D8D5D0" }}
+              stroke="#6E6A63"
+              tick={{ fill: "#6E6A63", fontSize: 10, fontFamily: "monospace" }}
+              tickLine={{ stroke: "#CDC9BF" }}
               tickFormatter={(v: number) => v.toFixed(2)}
             />
             <Tooltip
               content={({ active, payload, label }) => {
                 if (active && payload && payload.length) {
                   return (
-                    <div className="bg-[#FFFFFF] border border-[#D8D5D0] p-3 text-xs font-mono space-y-1.5 rounded-none shadow-md">
-                      <div className="text-[#555555] border-b border-[#EFECE9] pb-1 font-semibold">
+                    <div className="bg-[#FFFFFF] border border-[#B5B0A6] p-3 text-xs font-mono space-y-1.5 rounded-sm shadow-xs">
+                      <div className="text-[#5A5752] border-b border-[#E2DFD7] pb-1 font-semibold">
                         Acquired: {label}
                       </div>
                       <div className="flex items-center justify-between gap-4 text-[#3D5230]">
                         <span>NDVI (Canopy Vigor):</span>
                         <span className="font-bold">{payload[0]?.value}</span>
                       </div>
-                      <div className="flex items-center justify-between gap-4 text-[#555555]">
+                      <div className="flex items-center justify-between gap-4 text-[#5A5752]">
                         <span>NDWI (Surface Moisture):</span>
                         <span className="font-bold">{payload[1]?.value}</span>
                       </div>
                       {payload[0]?.payload?.heterogeneity !== undefined && (
-                        <div className="flex items-center justify-between gap-4 text-[#1A1A1A]">
+                        <div className="flex items-center justify-between gap-4 text-[#141414]">
                           <span>Field Std Dev:</span>
                           <span className="font-bold">±{payload[0].payload.heterogeneity}</span>
                         </div>
                       )}
                       {payload[0]?.payload?.cloudCover !== undefined && (
-                        <div className="flex items-center justify-between gap-4 text-[#707070]">
+                        <div className="flex items-center justify-between gap-4 text-[#6E6A63]">
                           <span>Cloud Cover:</span>
                           <span>{payload[0].payload.cloudCover}%</span>
                         </div>
@@ -171,7 +171,7 @@ export function NdviTrendChart({
             <Legend
               wrapperStyle={{ paddingTop: "10px", fontSize: "11px", fontFamily: "monospace" }}
               formatter={(value) => (
-                <span className="text-[#555555]">
+                <span className="text-[#5A5752]">
                   {value === "ndvi"
                     ? "NDVI (Canopy Vigor)"
                     : value === "ndwi"
@@ -181,7 +181,7 @@ export function NdviTrendChart({
               )}
             />
             <ReferenceLine y={0.3} stroke="#CC5500" strokeDasharray="3 3" label={{ value: "Stress Baseline (0.30)", fill: "#CC5500", fontSize: 10, position: "insideBottomRight" }} />
-            <ReferenceLine y={0.0} stroke="#D8D5D0" strokeDasharray="2 2" />
+            <ReferenceLine y={0.0} stroke="#CDC9BF" strokeDasharray="2 2" />
 
             <Line
               type="monotone"

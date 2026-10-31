@@ -89,16 +89,16 @@ export default function TerraPulseMap({
     BHUVAN_LULC_LAYERS[selectedLocation.state] || BHUVAN_LULC_LAYERS["Default"];
 
   return (
-    <div className="relative w-full h-[520px] overflow-hidden border border-[#D8D5D0] bg-[#EFECE9] rounded-none shadow-xs">
+    <div className="relative w-full h-[520px] overflow-hidden border border-[#B5B0A6] bg-[#E2DFD7] rounded-sm shadow-xs">
       {/* Top Map Toolbar Controls */}
-      <div className="absolute top-3 left-3 z-10 flex items-center gap-2 bg-[#FFFFFF] p-1.5 border border-[#D8D5D0] rounded-none shadow-xs">
+      <div className="absolute top-3 left-3 z-10 flex items-center gap-2 bg-[#FFFFFF] p-1.5 border border-[#B5B0A6] rounded-sm shadow-xs">
         <button
           type="button"
           onClick={() => onToggleBhuvan(!showBhuvanLayer)}
-          className={`flex items-center gap-1.5 text-xs font-mono font-medium px-3 py-1.5 transition-colors rounded-none cursor-pointer ${
+          className={`flex items-center gap-1.5 text-xs font-mono font-medium px-3 py-1.5 transition-colors rounded-sm cursor-pointer ${
             showBhuvanLayer
               ? "bg-[#9CAF88] text-[#FFFFFF] font-bold border border-[#9CAF88]"
-              : "bg-[#F5F3F0] text-[#555555] hover:text-[#1A1A1A] border border-[#D8D5D0]"
+              : "bg-[#F4F1EA] text-[#403E3A] hover:text-[#141414] border border-[#CDC9BF]"
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
@@ -109,7 +109,7 @@ export default function TerraPulseMap({
           <button
             type="button"
             onClick={() => setActivePopup(scenes[0])}
-            className="flex items-center gap-1.5 text-xs font-mono font-medium px-3 py-1.5 bg-[#F5F3F0] text-[#555555] hover:text-[#1A1A1A] border border-[#D8D5D0] transition-colors rounded-none cursor-pointer"
+            className="flex items-center gap-1.5 text-xs font-mono font-medium px-3 py-1.5 bg-[#F4F1EA] text-[#403E3A] hover:text-[#141414] border border-[#CDC9BF] transition-colors rounded-sm cursor-pointer"
           >
             <Eye className="w-3.5 h-3.5 text-[#3D5230]" />
             <span>Scene Details</span>
@@ -118,7 +118,7 @@ export default function TerraPulseMap({
       </div>
 
       {/* Coordinate Chip */}
-      <div className="absolute top-3 right-14 z-10 bg-[#FFFFFF] px-3 py-1.5 border border-[#D8D5D0] text-[11px] font-mono text-[#1A1A1A] font-semibold rounded-none shadow-xs">
+      <div className="absolute top-3 right-14 z-10 bg-[#FFFFFF] px-3 py-1.5 border border-[#B5B0A6] text-[11px] font-mono text-[#141414] font-bold rounded-sm shadow-xs">
         {selectedLocation.lat.toFixed(3)}°N, {selectedLocation.lon.toFixed(3)}°E
       </div>
 
@@ -170,15 +170,15 @@ export default function TerraPulseMap({
             >
               <div className="group relative cursor-pointer flex flex-col items-center">
                 <div
-                  className={`w-7 h-7 flex items-center justify-center transition-colors rounded-none ${
+                  className={`w-7 h-7 flex items-center justify-center transition-colors rounded-sm ${
                     isSelected
                       ? "bg-[#9CAF88] text-[#FFFFFF] border-2 border-[#FFFFFF] shadow-sm"
-                      : "bg-[#FFFFFF] text-[#4E653E] border border-[#D8D5D0] hover:border-[#9CAF88]"
+                      : "bg-[#FFFFFF] text-[#3D5230] border border-[#CDC9BF] hover:border-[#9CAF88]"
                   }`}
                 >
                   <MapPin className="w-4 h-4" />
                 </div>
-                <span className="text-[10px] font-mono font-medium bg-[#FFFFFF] text-[#1A1A1A] px-1.5 py-0.5 border border-[#D8D5D0] mt-1 whitespace-nowrap rounded-none shadow-xs">
+                <span className="text-[10px] font-mono font-bold bg-[#FFFFFF] text-[#141414] px-1.5 py-0.5 border border-[#CDC9BF] mt-1 whitespace-nowrap rounded-sm shadow-xs">
                   {preset.name.split(" ")[0]}
                 </span>
               </div>
@@ -198,10 +198,10 @@ export default function TerraPulseMap({
             anchor="bottom"
           >
             <div className="flex flex-col items-center">
-              <div className="w-7 h-7 bg-[#CC5500] text-[#FFFFFF] border-2 border-[#FFFFFF] flex items-center justify-center rounded-none shadow-sm">
+              <div className="w-7 h-7 bg-[#CC5500] text-[#FFFFFF] border-2 border-[#FFFFFF] flex items-center justify-center rounded-sm shadow-sm">
                 <MapPin className="w-4 h-4" />
               </div>
-              <span className="text-[10px] font-mono font-medium bg-[#FFFFFF] text-[#CC5500] px-1.5 py-0.5 border border-[#CC5500] mt-1 rounded-none shadow-xs">
+              <span className="text-[10px] font-mono font-bold bg-[#FFFFFF] text-[#CC5500] px-1.5 py-0.5 border border-[#CC5500] mt-1 rounded-sm shadow-xs">
                 Custom Point
               </span>
             </div>
@@ -218,12 +218,12 @@ export default function TerraPulseMap({
             closeButton={true}
             closeOnClick={false}
           >
-            <div className="p-2 text-[#1A1A1A] max-w-xs font-mono text-xs">
-              <div className="flex items-center justify-between pb-1.5 border-b border-[#EFECE9] mb-2">
-                <span className="font-bold text-[#3D5230] text-[11px] uppercase">
+            <div className="p-2 text-[#141414] max-w-xs font-mono text-xs">
+              <div className="flex items-center justify-between pb-1.5 border-b border-[#CDC9BF] mb-2">
+                <span className="font-sans font-bold text-[#3D5230] text-[11px] uppercase tracking-wider">
                   Sentinel-2 L2A Asset
                 </span>
-                <span className="text-[10px] bg-[#F1F6EE] text-[#3D5230] border border-[#9CAF88] px-1.5 py-0.5 rounded-none font-bold">
+                <span className="text-[10px] font-mono bg-[#F1F6EE] text-[#3D5230] border border-[#9CAF88] px-1.5 py-0.5 rounded-sm font-bold">
                   {activePopup.cloudCover.toFixed(1)}% Cloud
                 </span>
               </div>
@@ -231,17 +231,17 @@ export default function TerraPulseMap({
                 <img
                   src={activePopup.thumbnailHref}
                   alt="Sentinel-2 Optical Preview"
-                  className="w-full h-32 object-cover border border-[#D8D5D0] mb-2 rounded-none"
+                  className="w-full h-32 object-cover border border-[#CDC9BF] mb-2 rounded-sm"
                 />
               )}
-              <div className="text-[10px] space-y-1 text-[#555555]">
+              <div className="text-[10px] space-y-1 text-[#5A5752]">
                 <p className="truncate">
-                  <span className="text-[#1A1A1A] font-semibold">ID:</span> {activePopup.id}
+                  <span className="text-[#141414] font-semibold">ID:</span> {activePopup.id}
                 </p>
                 <p>
-                  <span className="text-[#1A1A1A] font-semibold">Acquired:</span> {activePopup.datetime.replace("T", " ").slice(0, 19)} UTC
+                  <span className="text-[#141414] font-semibold">Acquired:</span> {activePopup.datetime.replace("T", " ").slice(0, 19)} UTC
                 </p>
-                <p className="text-[#707070] pt-1 border-t border-[#EFECE9]">
+                <p className="text-[#6E6A63] pt-1 border-t border-[#CDC9BF]">
                   Spectral bands Red (B04) and NIR (B08) verified active.
                 </p>
               </div>

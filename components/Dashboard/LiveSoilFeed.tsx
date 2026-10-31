@@ -64,12 +64,12 @@ export function LiveSoilFeed({ lat, lon }: { lat: number; lon: number }) {
   const latest = readings[0];
 
   return (
-    <div className="bg-[#FFFFFF] border border-[#D8D5D0] p-5 font-mono text-xs space-y-4 rounded-none flex flex-col justify-between shadow-xs">
+    <div className="bg-[#FFFFFF] border border-[#B5B0A6] p-5 text-xs space-y-4 rounded-sm flex flex-col justify-between shadow-xs">
       {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-[#EFECE9]">
+      <div className="flex items-center justify-between pb-3 border-b border-[#E2DFD7]">
         <div className="flex items-center gap-2">
           <Radio className="w-4 h-4 text-[#9CAF88]" />
-          <span className="font-bold text-[#1A1A1A] uppercase tracking-wider text-[11px]">
+          <span className="font-sans font-bold text-[#141414] uppercase tracking-wider text-xs">
             Root-Zone Telemetry Feed
           </span>
         </div>
@@ -79,7 +79,7 @@ export function LiveSoilFeed({ lat, lon }: { lat: number; lon: number }) {
               connected ? "bg-[#9CAF88]" : "bg-[#CC5500]"
             }`}
           />
-          <span className="text-[10px] text-[#555555] uppercase">
+          <span className="text-[10px] font-sans font-bold text-[#403E3A] uppercase tracking-wider">
             {connected ? "Stream Active" : "Connecting"}
           </span>
         </div>
@@ -87,58 +87,58 @@ export function LiveSoilFeed({ lat, lon }: { lat: number; lon: number }) {
 
       {latest ? (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3 text-[11px]">
-            <div className="p-3 bg-[#F7F5F2] border border-[#D8D5D0] rounded-none">
-              <span className="text-[#555555] text-[10px] block uppercase font-medium">
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="p-3 bg-[#F4F1EA] border border-[#CDC9BF] rounded-sm">
+              <span className="font-sans font-bold text-[10px] text-[#5A5752] block uppercase tracking-wider">
                 Topsoil Moisture (0-7cm)
               </span>
               <div className="mt-1">
                 {latest.soilMoisture_0_7 !== null ? (
                   <>
-                    <span className="text-[#3D5230] font-bold text-lg">
+                    <span className="font-mono text-[#3D5230] font-bold text-lg">
                       {latest.soilMoisture_0_7.toFixed(3)}
                     </span>
-                    <span className="text-[10px] text-[#666666] ml-1">m³/m³</span>
+                    <span className="font-mono text-[10px] text-[#6E6A63] ml-1">m³/m³</span>
                   </>
                 ) : (
-                  <span className="text-[#707070] text-sm italic">Unavailable</span>
+                  <span className="font-sans text-[#6E6A63] text-sm italic">Unavailable</span>
                 )}
               </div>
             </div>
 
-            <div className="p-3 bg-[#F7F5F2] border border-[#D8D5D0] rounded-none">
-              <span className="text-[#555555] text-[10px] block uppercase font-medium">
+            <div className="p-3 bg-[#F4F1EA] border border-[#CDC9BF] rounded-sm">
+              <span className="font-sans font-bold text-[10px] text-[#5A5752] block uppercase tracking-wider">
                 Soil Temperature
               </span>
               <div className="mt-1">
                 {latest.soilTemp_0_7 !== null ? (
-                  <span className="text-[#1A1A1A] font-bold text-lg">
+                  <span className="font-mono text-[#141414] font-bold text-lg">
                     {latest.soilTemp_0_7.toFixed(1)}°C
                   </span>
                 ) : (
-                  <span className="text-[#707070] text-sm italic">Unavailable</span>
+                  <span className="font-sans text-[#6E6A63] text-sm italic">Unavailable</span>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 text-[11px]">
-            <div className="p-2.5 bg-[#F7F5F2] border border-[#D8D5D0] rounded-none">
-              <span className="text-[#666666] text-[10px] block uppercase">
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="p-2.5 bg-[#F4F1EA] border border-[#CDC9BF] rounded-sm">
+              <span className="font-sans font-bold text-[10px] text-[#5A5752] block uppercase tracking-wider">
                 Subsoil (7-28cm)
               </span>
-              <span className="text-[#1A1A1A] font-semibold text-sm">
+              <span className="font-mono text-[#141414] font-bold text-sm block mt-0.5">
                 {latest.soilMoisture_7_28 !== null
                   ? `${latest.soilMoisture_7_28.toFixed(3)} m³/m³`
                   : "Unavailable"}
               </span>
             </div>
 
-            <div className="p-2.5 bg-[#F7F5F2] border border-[#D8D5D0] rounded-none">
-              <span className="text-[#666666] text-[10px] block uppercase">
+            <div className="p-2.5 bg-[#F4F1EA] border border-[#CDC9BF] rounded-sm">
+              <span className="font-sans font-bold text-[10px] text-[#5A5752] block uppercase tracking-wider">
                 Daily Evapotranspiration
               </span>
-              <span className="text-[#1A1A1A] font-semibold text-sm">
+              <span className="font-mono text-[#141414] font-bold text-sm block mt-0.5">
                 {latest.et0_today !== null
                   ? `${latest.et0_today.toFixed(1)} mm/day`
                   : "Unavailable"}
@@ -146,15 +146,15 @@ export function LiveSoilFeed({ lat, lon }: { lat: number; lon: number }) {
             </div>
           </div>
 
-          <div className="text-[10px] text-[#555555] flex items-center justify-between pt-1 border-t border-[#EFECE9]">
+          <div className="text-[10px] text-[#5A5752] flex items-center justify-between pt-1 border-t border-[#E2DFD7] font-mono">
             <span>Feed: Root-Zone SSE Telemetry</span>
-            <span className="text-[#707070]">{latest.ts.slice(11, 19)} UTC</span>
+            <span className="text-[#6E6A63]">{latest.ts.slice(11, 19)} UTC</span>
           </div>
         </div>
       ) : (
-        <div className="p-6 text-center text-[#666666] text-xs flex flex-col items-center justify-center gap-2">
+        <div className="p-6 text-center text-[#5A5752] text-xs flex flex-col items-center justify-center gap-2 font-sans">
           <RefreshCw className="w-4 h-4 animate-spin text-[#9CAF88]" />
-          <span>Synchronizing telemetry stream...</span>
+          <span className="font-semibold">Synchronizing telemetry stream...</span>
         </div>
       )}
     </div>

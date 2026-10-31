@@ -9,9 +9,9 @@ interface BadgeProps {
 
 export function Badge({ children, variant = "default", className }: BadgeProps) {
   const variantStyles: Record<string, string> = {
-    default: "bg-[#F5F3F0] text-[#555555] border-[#D8D5D0]",
-    concrete: "bg-[#F5F3F0] text-[#555555] border-[#D8D5D0]",
-    info: "bg-[#F7F5F2] text-[#555555] border-[#D8D5D0]",
+    default: "bg-[#F4F1EA] text-[#403E3A] border-[#CDC9BF]",
+    concrete: "bg-[#F4F1EA] text-[#403E3A] border-[#CDC9BF]",
+    info: "bg-[#F4F1EA] text-[#5A5752] border-[#CDC9BF]",
     low: "bg-[#F1F6EE] text-[#3D5230] border-[#9CAF88]",
     sage: "bg-[#F1F6EE] text-[#3D5230] border-[#9CAF88]",
     medium: "bg-[#FFF6F0] text-[#963E00] border-[#CC5500]",
@@ -23,7 +23,7 @@ export function Badge({ children, variant = "default", className }: BadgeProps) 
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2 py-0.5 text-[11px] font-mono font-medium border rounded-none tracking-wider uppercase",
+        "inline-flex items-center px-2 py-0.5 text-[11px] font-mono font-medium border rounded-sm tracking-wider uppercase",
         variantStyles[variant] || variantStyles.default,
         className
       )}
