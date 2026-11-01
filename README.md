@@ -4,6 +4,29 @@
 
 ---
 
+**Live Application Deployment**: [https://linear-ascent.onrender.com/](https://linear-ascent.onrender.com/)
+
+---
+
+## System Architecture & Interface Walkthrough
+
+### 1. Spatial & Satellite Map Monitoring (Sentinel-2 Optical Telemetry & ISRO Bhuvan)
+![Spatial & Satellite Map Monitoring](docs/screenshots/01-spatial-map-monitoring.jpg)
+
+### 2. FAO-33 Water Yield Model & Autonomous Mitigation Directives
+![FAO-33 Water Yield Model & Autonomous Mitigation Directives](docs/screenshots/02-yield-water-mitigation.jpg)
+
+### 3. Monsoon & Hydrology Telemetry (10-Year JJAS vs. 14-Day Atmospheric Demand)
+![Monsoon & Hydrology Telemetry](docs/screenshots/03-monsoon-hydrology.jpg)
+
+### 4. Soil Hydraulic Strata & Real-Time Sensor Telemetry
+![Soil Hydraulic Strata & Real-Time Sensor Telemetry](docs/screenshots/04-soil-mandi-telemetry.jpg)
+
+### 5. Autonomous Multi-Node Agent Execution Trace & Data Provenance
+![Autonomous Multi-Node Agent Execution Trace & Data Provenance](docs/screenshots/05-autonomous-agent-trace.jpg)
+
+---
+
 ## Zero Dummy Data Compliance
 
 TerraPulse adheres strictly to a **Zero Dummy Data Policy**:
