@@ -2,9 +2,9 @@
 // TerraPulse — Data.gov.in Agmarknet Mandi Price Ingestion
 // =============================================================================
 
-import type { MandiRecord, AgentTraceStep } from "@/types";
-import { MandiResponseSchema } from "@/lib/schemas";
-import { timedFetch } from "./fetchWithRetry";
+import type { MandiRecord, AgentTraceStep } from "../../types/index.ts";
+import { MandiResponseSchema } from "../../lib/schemas.ts";
+import { timedFetch } from "./fetchWithRetry.ts";
 
 const AGMARKNET_RESOURCE_ID = "9ef84268-d588-465a-a308-a864a43d0070";
 const AGMARKNET_BASE_URL = `https://api.data.gov.in/resource/${AGMARKNET_RESOURCE_ID}`;

@@ -2,11 +2,12 @@
 // TerraPulse — Sentinel-2 STAC Ingestion (Element84 Earth Search v1)
 // =============================================================================
 
-import type { FarmLocation, SentinelScene, AgentTraceStep } from "@/types";
-import { StacResponseSchema } from "@/lib/schemas";
-import { CLOUD_COVER_THRESHOLD } from "@/lib/constants";
-import { toIsoDate, daysAgo } from "@/lib/utils";
-import { timedFetch } from "./fetchWithRetry";
+import type { FarmLocation, SentinelScene, AgentTraceStep } from "../../types/index.ts";
+import { StacResponseSchema } from "../../lib/schemas.ts";
+import { CLOUD_COVER_THRESHOLD } from "../../lib/constants.ts";
+import { toIsoDate, daysAgo } from "../../lib/utils.ts";
+import { timedFetch } from "./fetchWithRetry.ts";
+import { globalCache, SpatialTemporalCache, CACHE_TTL_MS } from "../../lib/cache.ts";
 
 const STAC_ENDPOINT = "https://earth-search.aws.element84.com/v1/search";
 
@@ -45,6 +46,20 @@ export async function fetchSentinelScenes(
   location: FarmLocation,
   trace: AgentTraceStep[]
 ): Promise<SentinelScene[]> {
+  const cacheKey = SpatialTemporalCache.makeBboxKey("element84:stac", location.bbox);
+  const cached = globalCache.get<SentinelScene[]>(cacheKey);
+  if (cached) {
+    if (trace[0]) {
+      trace[0].apiCalls.push({
+        url: `cache:${cacheKey}`,
+        method: "GET",
+        statusCode: 304,
+        latencyMs: 0,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    return cached;
+  }
   const windows = [30, 60, 90];
 
   for (let i = 0; i < windows.length; i++) {
@@ -106,7 +121,7 @@ export async function fetchSentinelScenes(
         trace[0].fallbackReason = `Expanded STAC window to ${windowDays} days — previous attempts yielded no usable scenes`;
       }
 
-      return usable.map((feature) => {
+      const scenes: SentinelScene[] = usable.map((feature) => {
         const visualHref =
           feature.assets["visual"]?.href ||
           feature.assets["visual-jp2"]?.href ||
@@ -133,10 +148,17 @@ export async function fetchSentinelScenes(
           visualHref,
           b04Href,
           b08Href,
+          sclHref:
+            feature.assets["scl"]?.href ||
+            feature.assets["SCL"]?.href ||
+            feature.assets["scl-jp2"]?.href ||
+            "",
           thumbnailHref,
           bbox: feature.bbox,
         };
       });
+      globalCache.set(cacheKey, scenes, CACHE_TTL_MS.IMAGERY);
+      return scenes;
     }
 
     // Log the fallback in trace before next iteration

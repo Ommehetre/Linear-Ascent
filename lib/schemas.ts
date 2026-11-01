@@ -187,6 +187,55 @@ export const MandiResponseSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// Risk & Synthesis Schemas (Strict Gemini Structured Output & Validation)
+// ---------------------------------------------------------------------------
+export const RiskLevelEnum = z.enum([
+  "LOW",
+  "MODERATE",
+  "HIGH",
+  "SEVERE",
+  "UNKNOWN",
+]);
+
+export const GeminiRiskSynthesisSchema = z.object({
+  risk_level: RiskLevelEnum,
+  risk_category: z.string(),
+  risk_basis: z.array(z.string()).default([]),
+  synthesis: z.string().min(10),
+  key_vulnerabilities: z.array(z.string()).default([]),
+  citations: z.array(z.string()).default([]),
+});
+
+export const NdviStatsSchema = z.object({
+  mean: z.number(),
+  median: z.number(),
+  p10: z.number(),
+  p90: z.number(),
+  validPixelFraction: z.number(),
+  cloudCoverPct: z.number(),
+  acquisitionDate: z.string(),
+  ndviAnomaly: z.number().nullable().optional(),
+  status: z.enum(["valid", "insufficient_clear_imagery", "offline"]),
+  message: z.string().optional(),
+});
+
+export const AgentRunRequestSchema = z.object({
+  location: z.object({
+    name: z.string().default("Custom Field"),
+    lat: z.number().min(-90).max(90),
+    lon: z.number().min(-180).max(180),
+    bbox: z.tuple([z.number(), z.number(), z.number(), z.number()]).optional(),
+    state: z.string().default("Maharashtra"),
+    crop: z.enum(["Rice", "Wheat", "Cotton", "Soybean", "Pulses"]).default("Cotton"),
+    sowingDate: z.string().optional(),
+    growthStage: z.enum(["initial", "development", "mid", "late"]).optional(),
+  }),
+  crop: z.enum(["Rice", "Wheat", "Cotton", "Soybean", "Pulses"]).optional(),
+  sowingDate: z.string().optional(),
+  growthStage: z.enum(["initial", "development", "mid", "late"]).optional(),
+});
+
+// ---------------------------------------------------------------------------
 // Export inferred types
 // ---------------------------------------------------------------------------
 export type StacResponse = z.infer<typeof StacResponseSchema>;
@@ -196,3 +245,6 @@ export type OpenMeteoArchive = z.infer<typeof OpenMeteoArchiveSchema>;
 export type NasaPower = z.infer<typeof NasaPowerSchema>;
 export type SoilGridsData = z.infer<typeof SoilGridsSchema>;
 export type MandiResponse = z.infer<typeof MandiResponseSchema>;
+export type GeminiRiskSynthesis = z.infer<typeof GeminiRiskSynthesisSchema>;
+export type NdviStatsParsed = z.infer<typeof NdviStatsSchema>;
+export type AgentRunRequest = z.infer<typeof AgentRunRequestSchema>;

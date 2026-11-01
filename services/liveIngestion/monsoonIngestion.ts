@@ -5,11 +5,12 @@
 // Part C: NASA POWER agroclimatology + SPEI computation
 // =============================================================================
 
-import type { MonsoonData, AgentTraceStep } from "@/types";
-import { OpenMeteoArchiveSchema, NasaPowerSchema } from "@/lib/schemas";
-import { toIsoDate, toNasaDate, jjasRange, sumNonNull } from "@/lib/utils";
-import { computeSPEI } from "@/services/yieldEngine";
-import { timedFetch } from "./fetchWithRetry";
+import type { MonsoonData, AgentTraceStep } from "../../types/index.ts";
+import { OpenMeteoArchiveSchema, NasaPowerSchema } from "../../lib/schemas.ts";
+import { toIsoDate, toNasaDate, jjasRange, sumNonNull } from "../../lib/utils.ts";
+import { computeSPEI } from "../yieldEngine.ts";
+import { timedFetch } from "./fetchWithRetry.ts";
+import { globalCache, SpatialTemporalCache, CACHE_TTL_MS } from "../../lib/cache.ts";
 
 const OPEN_METEO_ARCHIVE_URL  = "https://archive-api.open-meteo.com/v1/archive";
 const OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
@@ -278,6 +279,20 @@ export async function fetchMonsoonData(
   lon: number,
   trace: AgentTraceStep[]
 ): Promise<MonsoonData> {
+  const cacheKey = SpatialTemporalCache.makeSpatialKey("open-meteo:monsoon", lat, lon);
+  const cached = globalCache.get<MonsoonData>(cacheKey);
+  if (cached) {
+    if (trace[0]) {
+      trace[0].apiCalls.push({
+        url: `cache:${cacheKey}`,
+        method: "GET",
+        statusCode: 304,
+        latencyMs: 0,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    return cached;
+  }
   // ---- Part A: Historical 10-year archive in a single multi-year call ----
   const historicalPrecipByMonth = new Map<string, number>();
   const historicalEt0ByMonth = new Map<string, number>();
@@ -378,7 +393,7 @@ export async function fetchMonsoonData(
   );
   const spei = computeSPEI(waterBalance);
 
-  return {
+  const data: MonsoonData = {
     historical,
     lpa_mm,
     lpa_deviation_pct,
@@ -386,4 +401,6 @@ export async function fetchMonsoonData(
     spei,
     nasaPower,
   };
+  globalCache.set(cacheKey, data, CACHE_TTL_MS.WEATHER);
+  return data;
 }

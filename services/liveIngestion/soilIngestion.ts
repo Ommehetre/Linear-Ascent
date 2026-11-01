@@ -2,10 +2,11 @@
 // TerraPulse — Open-Meteo Soil Forecast Ingestion (ERA5 Seamless)
 // =============================================================================
 
-import type { SoilForecast, AgentTraceStep } from "@/types";
-import { OpenMeteoSoilSchema } from "@/lib/schemas";
-import { forwardFill } from "@/lib/utils";
-import { timedFetch } from "./fetchWithRetry";
+import type { SoilForecast, AgentTraceStep } from "../../types/index.ts";
+import { OpenMeteoSoilSchema } from "../../lib/schemas.ts";
+import { forwardFill } from "../../lib/utils.ts";
+import { timedFetch } from "./fetchWithRetry.ts";
+import { globalCache, SpatialTemporalCache, CACHE_TTL_MS } from "../../lib/cache.ts";
 
 const OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 
@@ -20,6 +21,20 @@ export async function fetchSoilForecast(
   lon: number,
   trace: AgentTraceStep[]
 ): Promise<SoilForecast> {
+  const cacheKey = SpatialTemporalCache.makeSpatialKey("open-meteo:soil", lat, lon);
+  const cached = globalCache.get<SoilForecast>(cacheKey);
+  if (cached) {
+    if (trace[0]) {
+      trace[0].apiCalls.push({
+        url: `cache:${cacheKey}`,
+        method: "GET",
+        statusCode: 304,
+        latencyMs: 0,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    return cached;
+  }
   const params = new URLSearchParams({
     latitude: String(lat),
     longitude: String(lon),
@@ -76,7 +91,7 @@ export async function fetchSoilForecast(
   const st7_28  = forwardFill(hourly.soil_temperature_7_to_28cm?? []);
   const et0     = forwardFill(daily.et0_fao_evapotranspiration ?? []);
 
-  return {
+  const forecast: SoilForecast = {
     time: hourly.time,
     soilMoisture_0_7: sm0_7,
     soilMoisture_7_28: sm7_28,
@@ -88,6 +103,9 @@ export async function fetchSoilForecast(
       values: et0,
     },
   };
+
+  globalCache.set(cacheKey, forecast, CACHE_TTL_MS.SOIL);
+  return forecast;
 }
 
 /**

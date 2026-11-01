@@ -2,10 +2,11 @@
 // TerraPulse — ISRIC SoilGrids v2 Profile Ingestion
 // =============================================================================
 
-import type { SoilProfile, AgentTraceStep } from "@/types";
-import { SoilGridsSchema } from "@/lib/schemas";
-import { computeSoilHydraulics } from "@/services/yieldEngine";
-import { timedFetch } from "./fetchWithRetry";
+import type { SoilProfile, AgentTraceStep } from "../../types/index.ts";
+import { SoilGridsSchema } from "../../lib/schemas.ts";
+import { computeSoilHydraulics } from "../yieldEngine.ts";
+import { timedFetch } from "./fetchWithRetry.ts";
+import { globalCache, SpatialTemporalCache, CACHE_TTL_MS } from "../../lib/cache.ts";
 
 const SOILGRIDS_URL =
   "https://rest.isric.org/soilgrids/v2.0/properties/query";
@@ -89,7 +90,7 @@ function getRegionalProfile(lat: number, lon: number): SoilProfile {
     soc_g_per_kg,
   });
 
-  return {
+  const profile: SoilProfile = {
     clay_pct,
     sand_pct,
     silt_pct,
@@ -100,6 +101,7 @@ function getRegionalProfile(lat: number, lon: number): SoilProfile {
     wiltingPoint: WP,
     availableWaterCapacity: AWC,
   };
+  return profile;
 }
 
 /**
@@ -112,6 +114,20 @@ export async function fetchSoilProfile(
   lon: number,
   trace: AgentTraceStep[]
 ): Promise<SoilProfile> {
+  const cacheKey = SpatialTemporalCache.makeSpatialKey("isric:soilgrids", lat, lon);
+  const cached = globalCache.get<SoilProfile>(cacheKey);
+  if (cached) {
+    if (trace[0]) {
+      trace[0].apiCalls.push({
+        url: `cache:${cacheKey}`,
+        method: "GET",
+        statusCode: 304,
+        latencyMs: 0,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    return cached;
+  }
   // Build URL with repeated query params (URLSearchParams handles this cleanly)
   const params = new URLSearchParams();
   params.set("lat", String(lat));
@@ -216,7 +232,7 @@ export async function fetchSoilProfile(
     soc_g_per_kg,
   });
 
-  return {
+  const profile: SoilProfile = {
     clay_pct,
     sand_pct,
     silt_pct,
@@ -227,4 +243,6 @@ export async function fetchSoilProfile(
     wiltingPoint: WP,
     availableWaterCapacity: AWC,
   };
+  globalCache.set(cacheKey, profile, CACHE_TTL_MS.SOIL);
+  return profile;
 }

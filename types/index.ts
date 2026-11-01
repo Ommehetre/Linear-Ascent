@@ -5,7 +5,18 @@
 
 export type CropType = "Rice" | "Wheat" | "Cotton" | "Soybean" | "Pulses";
 
-export type RiskLevel = "low" | "medium" | "high" | "severe";
+export type GrowthStage = "initial" | "development" | "mid" | "late";
+
+export type RiskLevel =
+  | "low"
+  | "medium"
+  | "high"
+  | "severe"
+  | "LOW"
+  | "MODERATE"
+  | "HIGH"
+  | "SEVERE"
+  | "UNKNOWN";
 
 // ---------------------------------------------------------------------------
 // Location
@@ -17,10 +28,12 @@ export interface FarmLocation {
   bbox: [number, number, number, number]; // [minLon, minLat, maxLon, maxLat]
   state: string;
   crop: CropType;
+  sowingDate?: string;
+  growthStage?: GrowthStage;
 }
 
 // ---------------------------------------------------------------------------
-// Satellite / STAC
+// Satellite / STAC & Spectral Indices
 // ---------------------------------------------------------------------------
 export interface NdviDataPoint {
   date: string;
@@ -30,6 +43,19 @@ export interface NdviDataPoint {
   cloudCover: number;
 }
 
+export interface NdviStats {
+  mean: number;
+  median: number;
+  p10: number;
+  p90: number;
+  validPixelFraction: number;
+  cloudCoverPct: number;
+  acquisitionDate: string;
+  ndviAnomaly?: number | null;
+  status: "valid" | "insufficient_clear_imagery" | "offline";
+  message?: string;
+}
+
 export interface SentinelScene {
   id: string;
   datetime: string;
@@ -37,6 +63,7 @@ export interface SentinelScene {
   visualHref: string;
   b04Href: string;
   b08Href: string;
+  sclHref?: string;
   b03Href?: string;
   b11Href?: string;
   thumbnailHref: string;
@@ -44,6 +71,7 @@ export interface SentinelScene {
   ndvi?: number;
   ndwi?: number;
   ndviStd?: number;
+  ndviStats?: NdviStats;
   bbox: number[];
 }
 
@@ -108,17 +136,41 @@ export interface MandiRecord {
 // ---------------------------------------------------------------------------
 // Yield Engine
 // ---------------------------------------------------------------------------
+export interface DailyWaterBalanceStep {
+  date: string;
+  et0_mm: number;
+  kc: number;
+  etc_mm: number;
+  theta_rz: number;
+  raw_mm: number;
+  taw_mm: number;
+  dr_mm: number;
+  ks: number;
+  eta_mm: number;
+  deficit_mm: number;
+}
+
 export interface YieldEngineOutput {
   crop: CropType;
+  growthStage?: GrowthStage;
+  sowingDate?: string;
   ky: number;
-  eta_mm: number; // actual ET (from Open-Meteo)
+  stageKy?: number;
+  stageDurationDays?: number;
+  rootDepth_m?: number;
+  eta_mm: number; // actual ET (from Open-Meteo or FAO model)
   etm_mm: number; // potential/max ET
+  etc_mm?: number; // crop ET (Kc * ET0)
   etDeficitRatio: number; // 1 - ETa/ETm
-  yieldReductionPct: number; // Ky × (1 - ETa/ETm) × 100
+  yieldReductionPct: number; // Ky × (1 - ETa/ETm) × 100 or relative window impact %
+  waterStressIndex?: number; // 1 - sum(ETa)/sum(ETc)
+  windowYieldImpactPct?: number; // Stage Ky * stress * windowFraction * 100
+  windowLabel?: string;
   estimatedYield_t_ha: number;
   maxYield_t_ha: number;
   smdi: number; // Soil Moisture Deficit Index (-1 to +1)
   irrigationDeficit_L_ha: number; // litres per hectare needed
+  dailySeries?: DailyWaterBalanceStep[];
 }
 
 // ---------------------------------------------------------------------------
@@ -130,6 +182,11 @@ export interface ApiCallRecord {
   statusCode: number;
   latencyMs: number;
   timestamp: string;
+  tokens?: {
+    prompt: number;
+    completion: number;
+    total: number;
+  };
 }
 
 export interface AgentTraceStep {
@@ -171,6 +228,7 @@ export interface AgentReport {
   provenance: Record<string, DataProvenance>;
   confidence: number;
   scenes: SentinelScene[];
+  ndviStats?: NdviStats | null;
   ndviSeries?: NdviDataPoint[];
   ndviDecline?: boolean;
   ndviAnomaly?: number;
@@ -184,6 +242,7 @@ export interface AgentReport {
   visionAnalysis: string;
   riskClassification: string;
   riskLevel: RiskLevel;
+  riskBasis?: string[];
   citations: CitationTag[];
   mitigation: MitigationPlan;
 }

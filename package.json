@@ -9,7 +9,9 @@
     "build": "next build",
     "build:webpack": "next build --webpack",
     "start": "next start",
-    "test": "node scripts/testEndpoints.mjs"
+    "test": "node --experimental-strip-types --test tests/unit/*.test.ts",
+    "test:unit": "node --experimental-strip-types --test tests/unit/*.test.ts",
+    "test:e2e": "node scripts/testEndpoints.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.32.0",
@@ -35,5 +37,4 @@
     "postcss": "^8.5.32",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
-}
+  }}

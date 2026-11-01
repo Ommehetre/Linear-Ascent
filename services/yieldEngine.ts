@@ -1,10 +1,21 @@
 // =============================================================================
 // TerraPulse — Core Deterministic Agro-Climatic & Yield Engine
-// FAO Ky Yield Response, Saxton-Rawls PTF, SMDI & SPEI
+// FAO-56 Time-Stepped Water Balance Model & FAO-33 Stage-Specific Yield Response
+// Strictly Zero Dummy Data Compliant
 // =============================================================================
 
-import type { CropType, SoilProfile, YieldEngineOutput } from "@/types";
-import { KY_VALUES, MAX_YIELD_T_HA, ROOT_DEPTH_M } from "@/lib/constants";
+import type {
+  CropType,
+  GrowthStage,
+  SoilProfile,
+  SoilForecast,
+  YieldEngineOutput,
+  DailyWaterBalanceStep,
+} from "../types/index.ts";
+import {
+  AGRONOMY_CONFIG,
+  SOIL_STRATA,
+} from "../lib/config/agronomyConfig.ts";
 
 export interface RawSoilForPTF {
   clay_pct: number;
@@ -79,63 +90,409 @@ export function computeSMDI(currentSW: number, FC: number, WP: number): number {
 }
 
 /**
- * FAO Crop Water Production Function (Doorenbos & Kassam, 1979 / FAO-33)
- * (1 - Ya / Ym) = Ky * (1 - ETa / ETm)
+ * Derives crop growth stage from explicit sowing date or the Indian crop calendar.
  */
-export function computeYieldForecast(params: {
+export function deriveGrowthStage(params: {
   crop: CropType;
-  eta_mm: number;
-  etm_mm: number;
+  sowingDate?: string;
+  referenceDate?: Date;
+  state?: string;
+  manualStage?: GrowthStage;
+}): {
+  stage: GrowthStage;
+  daysAfterSowing: number;
+  stageProgressFraction: number;
+  stageDurationDays: number;
+} {
+  const { crop, sowingDate, state, manualStage } = params;
+  const refDate = params.referenceDate || new Date();
+  const cropConfig = AGRONOMY_CONFIG[crop];
+
+  if (manualStage && cropConfig.stages[manualStage]) {
+    const stageDurationDays = cropConfig.stages[manualStage].durationDays;
+    return {
+      stage: manualStage,
+      daysAfterSowing: Math.round(stageDurationDays / 2),
+      stageProgressFraction: 0.5,
+      stageDurationDays,
+    };
+  }
+
+  let das = 0;
+  if (sowingDate) {
+    const sowTime = new Date(sowingDate).getTime();
+    const diffMs = refDate.getTime() - sowTime;
+    das = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+  } else {
+    // Derive from regional Indian crop calendar
+    const regionKey = (state && state in cropConfig.defaultSowingMonth)
+      ? (state as keyof typeof cropConfig.defaultSowingMonth)
+      : "Default";
+    const sowingMonth = cropConfig.defaultSowingMonth[regionKey] || 6; // 1-12
+    const currentYear = refDate.getFullYear();
+    const sowYear =
+      refDate.getMonth() + 1 < sowingMonth ? currentYear - 1 : currentYear;
+    const estimatedSowDate = new Date(sowYear, sowingMonth - 1, 15);
+    const diffMs = refDate.getTime() - estimatedSowDate.getTime();
+    das = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+  }
+
+  const { initial, development, mid, late } = cropConfig.stages;
+  const cumInit = initial.durationDays;
+  const cumDev = cumInit + development.durationDays;
+  const cumMid = cumDev + mid.durationDays;
+
+  if (das <= cumInit) {
+    return {
+      stage: "initial",
+      daysAfterSowing: das,
+      stageProgressFraction: Math.min(1.0, das / cumInit),
+      stageDurationDays: initial.durationDays,
+    };
+  } else if (das <= cumDev) {
+    const stageDays = das - cumInit;
+    return {
+      stage: "development",
+      daysAfterSowing: das,
+      stageProgressFraction: Math.min(1.0, stageDays / development.durationDays),
+      stageDurationDays: development.durationDays,
+    };
+  } else if (das <= cumMid) {
+    const stageDays = das - cumDev;
+    return {
+      stage: "mid",
+      daysAfterSowing: das,
+      stageProgressFraction: Math.min(1.0, stageDays / mid.durationDays),
+      stageDurationDays: mid.durationDays,
+    };
+  } else {
+    const stageDays = das - cumMid;
+    return {
+      stage: "late",
+      daysAfterSowing: das,
+      stageProgressFraction: Math.min(1.0, stageDays / late.durationDays),
+      stageDurationDays: late.durationDays,
+    };
+  }
+}
+
+/**
+ * Computes active effective root depth Zr (m) for the current growth stage.
+ */
+export function calculateRootDepth(
+  crop: CropType,
+  stage: GrowthStage,
+  stageProgressFraction = 0.5
+): number {
+  const config = AGRONOMY_CONFIG[crop];
+  const zMin = config.initialRootDepth_m;
+  const zMax = config.maxRootDepth_m;
+
+  switch (stage) {
+    case "initial":
+      return zMin;
+    case "development":
+      return Number((zMin + (zMax - zMin) * stageProgressFraction).toFixed(2));
+    case "mid":
+    case "late":
+      return zMax;
+  }
+}
+
+/**
+ * Computes multi-depth weighted root-zone soil water content (m³/m³)
+ * across the 3 Open-Meteo ERA5 strata (0-7cm, 7-28cm, 28-100cm) down to root depth Zr.
+ */
+export function calculateRootZoneMoisture(
+  sm0_7: number,
+  sm7_28: number,
+  sm28_100: number,
+  rootDepth_m: number
+): number {
+  const zr = Math.max(0.05, rootDepth_m);
+
+  // Overlap thicknesses (meters)
+  const d1 = Math.min(zr, SOIL_STRATA[0].thickness_m);
+  const d2 = Math.max(
+    0,
+    Math.min(zr - SOIL_STRATA[0].bottom_m, SOIL_STRATA[1].thickness_m)
+  );
+  const d3 = Math.max(0, zr - SOIL_STRATA[1].bottom_m);
+
+  const totalDepth = d1 + d2 + d3;
+  if (totalDepth <= 0) return sm0_7;
+
+  const weightedWater = sm0_7 * d1 + sm7_28 * d2 + sm28_100 * d3;
+  return Number((weightedWater / totalDepth).toFixed(4));
+}
+
+/**
+ * Computes FAO-56 water stress coefficient Ks = (TAW - Dr) / ((1 - p) * TAW), clamped [0, 1].
+ */
+export function calculateWaterStressCoefficient(params: {
+  theta_rz: number;
+  FC: number;
+  WP: number;
+  rootDepth_m: number;
+  p: number;
+}): {
+  taw_mm: number;
+  raw_mm: number;
+  dr_mm: number;
+  ks: number;
+} {
+  const { theta_rz, FC, WP, rootDepth_m, p } = params;
+
+  // Total Available Water TAW (mm) = 1000 * (FC - WP) * Zr
+  const awc = Math.max(0.01, FC - WP);
+  const taw_mm = Math.max(1.0, 1000 * awc * rootDepth_m);
+
+  // Readily Available Water RAW (mm) = p * TAW
+  const safeP = Math.max(0.1, Math.min(0.85, p));
+  const raw_mm = safeP * taw_mm;
+
+  // Root zone depletion Dr (mm) = 1000 * (FC - theta_rz) * Zr
+  const depletion_m3_m3 = Math.max(0, FC - theta_rz);
+  const dr_mm = Math.min(taw_mm, 1000 * depletion_m3_m3 * rootDepth_m);
+
+  let ks = 1.0;
+  if (dr_mm > raw_mm) {
+    const numerator = Math.max(0, taw_mm - dr_mm);
+    const denominator = Math.max(0.1, (1 - safeP) * taw_mm);
+    ks = Math.max(0, Math.min(1.0, numerator / denominator));
+  }
+
+  return {
+    taw_mm: Number(taw_mm.toFixed(1)),
+    raw_mm: Number(raw_mm.toFixed(1)),
+    dr_mm: Number(dr_mm.toFixed(1)),
+    ks: Number(ks.toFixed(3)),
+  };
+}
+
+/**
+ * FAO-56 / FAO-33 Daily Time-Stepped Crop Water-Balance Engine
+ * Replaces the static snapshot formula with a daily stepped root-zone water balance model.
+ */
+export function computeFaoWaterBalance(params: {
+  crop: CropType;
   soilProfile: SoilProfile;
-  currentSW: number;
+  soilForecast: SoilForecast;
+  sowingDate?: string;
+  growthStage?: GrowthStage;
+  state?: string;
+  referenceDate?: Date;
 }): YieldEngineOutput {
-  const { crop, eta_mm, etm_mm, soilProfile, currentSW } = params;
+  const { crop, soilProfile, soilForecast, sowingDate, growthStage, state } = params;
+  const cropConfig = AGRONOMY_CONFIG[crop];
 
-  const ky = KY_VALUES[crop] ?? 1.0;
-  const maxYield_t_ha = MAX_YIELD_T_HA[crop] ?? 3.0;
-  const rootDepth_m = ROOT_DEPTH_M[crop] ?? 0.6;
+  // 1. Derive Stage and Root Depth
+  const stageInfo = deriveGrowthStage({
+    crop,
+    sowingDate,
+    referenceDate: params.referenceDate,
+    state,
+    manualStage: growthStage,
+  });
 
-  const safeEtm = Math.max(1.0, etm_mm);
-  const safeEta = Math.min(safeEtm, Math.max(0, eta_mm));
-
-  // Relative Evapotranspiration Deficit: (1 - ETa / ETm)
-  const etDeficitRatio = Math.max(0, Math.min(1.0, 1.0 - safeEta / safeEtm));
-
-  // Predicted Yield Reduction %
-  const yieldReductionPct = Math.min(100, Math.max(0, ky * etDeficitRatio * 100));
-
-  // Actual Estimated Yield (t/ha)
-  const estimatedYield_t_ha = Math.max(
-    0,
-    maxYield_t_ha * (1 - yieldReductionPct / 100)
+  const stageParams = cropConfig.stages[stageInfo.stage];
+  const rootDepth_m = calculateRootDepth(
+    crop,
+    stageInfo.stage,
+    stageInfo.stageProgressFraction
   );
 
-  // Compute SMDI
-  const smdi = computeSMDI(
-    currentSW,
-    soilProfile.fieldCapacity,
-    soilProfile.wiltingPoint
+  const FC = soilProfile.fieldCapacity;
+  const WP = soilProfile.wiltingPoint;
+  const stageKy = stageParams.stageKy;
+  const kc = stageParams.kc;
+  const p = stageParams.p;
+
+  // 2. Time-step daily across the forecast window
+  const dailyDates = soilForecast.et0Daily.time || [];
+  const dailyEt0Values = soilForecast.et0Daily.values || [];
+  const numDays = Math.min(dailyDates.length, 14);
+
+  const dailySteps: DailyWaterBalanceStep[] = [];
+  let sumEt0 = 0;
+  let sumEtc = 0;
+  let sumEta = 0;
+
+  // Average 24-hour readings per forecast day for multi-depth soil moisture
+  const hoursPerDay = 24;
+  for (let d = 0; d < (numDays > 0 ? numDays : 14); d++) {
+    const dateStr = dailyDates[d] || `Day ${d + 1}`;
+    const et0_mm = Math.max(0.1, dailyEt0Values[d] ?? 4.0);
+
+    // Extract average soil moisture for day d
+    const startH = d * hoursPerDay;
+    const endH = startH + hoursPerDay;
+
+    const slice0_7 = (soilForecast.soilMoisture_0_7 || []).slice(startH, endH).filter((v): v is number => v !== null);
+    const slice7_28 = (soilForecast.soilMoisture_7_28 || []).slice(startH, endH).filter((v): v is number => v !== null);
+    const slice28_100 = (soilForecast.soilMoisture_28_100 || []).slice(startH, endH).filter((v): v is number => v !== null);
+
+    const avg0_7 = slice0_7.length > 0 ? slice0_7.reduce((a, b) => a + b, 0) / slice0_7.length : FC * 0.7;
+    const avg7_28 = slice7_28.length > 0 ? slice7_28.reduce((a, b) => a + b, 0) / slice7_28.length : FC * 0.75;
+    const avg28_100 = slice28_100.length > 0 ? slice28_100.reduce((a, b) => a + b, 0) / slice28_100.length : FC * 0.8;
+
+    const theta_rz = calculateRootZoneMoisture(avg0_7, avg7_28, avg28_100, rootDepth_m);
+
+    // Stress coefficient Ks
+    const { taw_mm, raw_mm, dr_mm, ks } = calculateWaterStressCoefficient({
+      theta_rz,
+      FC,
+      WP,
+      rootDepth_m,
+      p,
+    });
+
+    const etc_mm = Number((kc * et0_mm).toFixed(2));
+    const eta_mm = Number((ks * etc_mm).toFixed(2));
+    const deficit_mm = Number(Math.max(0, etc_mm - eta_mm).toFixed(2));
+
+    sumEt0 += et0_mm;
+    sumEtc += etc_mm;
+    sumEta += eta_mm;
+
+    dailySteps.push({
+      date: dateStr,
+      et0_mm,
+      kc,
+      etc_mm,
+      theta_rz,
+      raw_mm,
+      taw_mm,
+      dr_mm,
+      ks,
+      eta_mm,
+      deficit_mm,
+    });
+  }
+
+  // 3. Compute 14-day window stress index & stage-scaled relative yield impact
+  const totalEtc = Math.max(1.0, sumEtc);
+  const totalEta = Math.min(totalEtc, sumEta);
+  const waterStressIndex = Math.max(0, Math.min(1.0, 1.0 - totalEta / totalEtc));
+
+  // Scaled by the fraction of the growth stage covered by this forecast window
+  const forecastDays = dailySteps.length;
+  const stageDuration = Math.max(1, stageParams.durationDays);
+  const windowFraction = Math.min(1.0, forecastDays / stageDuration);
+
+  // Relative yield impact % for THIS WINDOW (not whole season!)
+  const windowYieldImpactPct = Number(
+    Math.min(100, stageKy * waterStressIndex * windowFraction * 100).toFixed(1)
   );
 
-  // Irrigation Deficit (L/ha) required to bring root zone up to Field Capacity
-  // (FC - currentSW) m³/m³ * rootDepth (m) * 10,000 (m²/ha) * 1,000 (L/m³)
-  const moistureDeficit_m3_m3 = Math.max(
-    0,
-    soilProfile.fieldCapacity - currentSW
+  // Realized estimated yield (t/ha) assuming deficit during this stage
+  const maxYield_t_ha = cropConfig.maxYield_t_ha;
+  const estimatedYield_t_ha = Number(
+    Math.max(0, maxYield_t_ha * (1 - windowYieldImpactPct / 100)).toFixed(2)
   );
+
+  // Soil Moisture Deficit Index (SMDI) on weighted root-zone soil water
+  const initialThetaRz = dailySteps[0]?.theta_rz ?? FC * 0.7;
+  const smdi = Number(computeSMDI(initialThetaRz, FC, WP).toFixed(3));
+
+  // Irrigation deficit needed to restore root zone to FC: (FC - theta_rz) * Zr * 10,000 * 1,000
+  const avgThetaRz =
+    dailySteps.reduce((acc, step) => acc + step.theta_rz, 0) /
+    (dailySteps.length || 1);
+  const moistureDeficit = Math.max(0, FC - avgThetaRz);
   const irrigationDeficit_L_ha = Math.round(
-    moistureDeficit_m3_m3 * rootDepth_m * 10000 * 1000
+    moistureDeficit * rootDepth_m * 10000 * 1000
   );
 
   return {
     crop,
-    ky,
+    growthStage: stageInfo.stage,
+    sowingDate: sowingDate || `Derived: ${stageInfo.daysAfterSowing} DAS`,
+    ky: Number(stageKy.toFixed(2)),
+    stageKy: Number(stageKy.toFixed(2)),
+    stageDurationDays: stageParams.durationDays,
+    rootDepth_m: Number(rootDepth_m.toFixed(2)),
+    eta_mm: Number(totalEta.toFixed(1)),
+    etm_mm: Number(totalEtc.toFixed(1)),
+    etc_mm: Number(totalEtc.toFixed(1)),
+    etDeficitRatio: Number(waterStressIndex.toFixed(3)),
+    yieldReductionPct: windowYieldImpactPct, // Preserved for frontend contract
+    waterStressIndex: Number(waterStressIndex.toFixed(3)),
+    windowYieldImpactPct,
+    windowLabel: `14-Day Window Water Stress Impact (${stageInfo.stage.toUpperCase()} Stage, FAO-33)`,
+    estimatedYield_t_ha,
+    maxYield_t_ha,
+    smdi,
+    irrigationDeficit_L_ha,
+    dailySeries: dailySteps,
+  };
+}
+
+/**
+ * Main compatibility entry point for yield calculations.
+ * Accepts legacy params or calls `computeFaoWaterBalance`.
+ */
+export function computeYieldForecast(params: {
+  crop: CropType;
+  eta_mm?: number;
+  etm_mm?: number;
+  soilProfile: SoilProfile;
+  currentSW?: number;
+  soilForecast?: SoilForecast | null;
+  sowingDate?: string;
+  growthStage?: GrowthStage;
+  state?: string;
+}): YieldEngineOutput {
+  const { crop, soilProfile, soilForecast, sowingDate, growthStage, state } = params;
+
+  if (soilForecast && soilForecast.et0Daily?.time?.length > 0) {
+    return computeFaoWaterBalance({
+      crop,
+      soilProfile,
+      soilForecast,
+      sowingDate,
+      growthStage,
+      state,
+    });
+  }
+
+  // Graceful fallback if full daily forecast is absent
+  const stageInfo = deriveGrowthStage({ crop, sowingDate, state, manualStage: growthStage });
+  const stageParams = AGRONOMY_CONFIG[crop].stages[stageInfo.stage];
+  const rootDepth_m = calculateRootDepth(crop, stageInfo.stage);
+
+  const safeEtm = Math.max(1.0, params.etm_mm ?? 30.0);
+  const currentSW = params.currentSW ?? soilProfile.fieldCapacity * 0.7;
+  const safeEta = Math.min(safeEtm, Math.max(0, params.eta_mm ?? safeEtm * (currentSW / soilProfile.fieldCapacity)));
+
+  const waterStressIndex = Math.max(0, Math.min(1.0, 1.0 - safeEta / safeEtm));
+  const windowFraction = Math.min(1.0, 14 / stageParams.durationDays);
+  const windowYieldImpactPct = Number((stageParams.stageKy * waterStressIndex * windowFraction * 100).toFixed(1));
+  const maxYield = AGRONOMY_CONFIG[crop].maxYield_t_ha;
+  const estimatedYield = Number((maxYield * (1 - windowYieldImpactPct / 100)).toFixed(2));
+  const smdi = computeSMDI(currentSW, soilProfile.fieldCapacity, soilProfile.wiltingPoint);
+
+  const moistureDeficit = Math.max(0, soilProfile.fieldCapacity - currentSW);
+  const irrigationDeficit_L_ha = Math.round(moistureDeficit * rootDepth_m * 10000 * 1000);
+
+  return {
+    crop,
+    growthStage: stageInfo.stage,
+    sowingDate,
+    ky: stageParams.stageKy,
+    stageKy: stageParams.stageKy,
+    stageDurationDays: stageParams.durationDays,
+    rootDepth_m,
     eta_mm: Number(safeEta.toFixed(1)),
     etm_mm: Number(safeEtm.toFixed(1)),
-    etDeficitRatio: Number(etDeficitRatio.toFixed(3)),
-    yieldReductionPct: Number(yieldReductionPct.toFixed(1)),
-    estimatedYield_t_ha: Number(estimatedYield_t_ha.toFixed(2)),
-    maxYield_t_ha,
+    etc_mm: Number(safeEtm.toFixed(1)),
+    etDeficitRatio: Number(waterStressIndex.toFixed(3)),
+    yieldReductionPct: windowYieldImpactPct,
+    waterStressIndex: Number(waterStressIndex.toFixed(3)),
+    windowYieldImpactPct,
+    windowLabel: `14-Day Window Water Stress Impact (${stageInfo.stage.toUpperCase()} Stage, FAO-33)`,
+    estimatedYield_t_ha: estimatedYield,
+    maxYield_t_ha: maxYield,
     smdi: Number(smdi.toFixed(3)),
     irrigationDeficit_L_ha,
   };

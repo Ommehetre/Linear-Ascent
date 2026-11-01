@@ -46,7 +46,8 @@ export function MitigationReport({
     );
   }
 
-  const isAlert = riskLevel === "high" || riskLevel === "severe";
+  const normalizedRisk = riskLevel.toLowerCase();
+  const isAlert = normalizedRisk === "high" || normalizedRisk === "severe";
 
   return (
     <div className="bg-[#FFFFFF] border border-[#B5B0A6] p-5 space-y-5 rounded-sm shadow-xs">

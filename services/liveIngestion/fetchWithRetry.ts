@@ -2,7 +2,7 @@
 // TerraPulse — Shared fetch utilities with retry and latency measurement
 // =============================================================================
 
-import { API_TIMEOUT_MS, EXPONENTIAL_BACKOFF_BASE_MS } from "@/lib/constants";
+import { API_TIMEOUT_MS, EXPONENTIAL_BACKOFF_BASE_MS } from "../../lib/constants.ts";
 
 /**
  * Fetch with exponential-backoff retry.
